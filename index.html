@@ -1,0 +1,1134 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadastro Operacional de Motoristas | São Paulo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --ink:#15181B;
+  --steel:#4A535B;
+  --mute:#7C868E;
+  --paper:#EDEFEC;
+  --card:#FFFFFF;
+  --line:#CDD3CD;
+  --line-soft:#E2E6E1;
+  --signal:#C8931A;
+  --signal-soft:#F7EBC9;
+  --alert:#A62A21;
+  --alert-soft:#F6E1DF;
+  --ok:#1E6B4A;
+  --ok-soft:#DDEDE4;
+  --disp:'Archivo', system-ui, sans-serif;
+  --mono:'IBM Plex Mono', ui-monospace, Menlo, monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--disp);
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:600px;margin:0 auto;padding:0 14px 72px}
+.wrap.wide{max-width:1080px}
+
+/* ---------- cabecalho estilo romaneio ---------- */
+.ticket{
+  background:var(--ink);color:#fff;margin:0 -14px 18px;padding:18px 18px 14px;
+  position:relative;
+}
+.ticket:after{
+  content:"";position:absolute;left:0;right:0;bottom:-7px;height:7px;
+  background:repeating-linear-gradient(90deg,var(--ink) 0 9px,transparent 9px 18px);
+}
+.ticket .eyebrow{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--signal);margin:0 0 6px
+}
+.ticket h1{
+  font-size:21px;line-height:1.15;margin:0;font-weight:700;letter-spacing:-.01em
+}
+.ticket p{margin:8px 0 0;font-size:13px;color:#B8C0C7;max-width:46ch}
+.ticket .meta{
+  display:flex;gap:14px;margin-top:12px;font-family:var(--mono);font-size:10.5px;
+  letter-spacing:.08em;text-transform:uppercase;color:#8A949C;flex-wrap:wrap
+}
+
+/* ---------- barra de progresso ---------- */
+.steps{display:flex;gap:3px;margin:0 0 6px}
+.steps i{flex:1;height:3px;background:var(--line);display:block}
+.steps i.on{background:var(--signal)}
+.steps i.done{background:var(--steel)}
+.stepinfo{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--mute);margin:0 0 16px
+}
+
+/* ---------- blocos ---------- */
+.block h2{
+  font-size:18px;margin:0 0 2px;font-weight:700;letter-spacing:-.01em
+}
+.block .sub{color:var(--steel);font-size:13.5px;margin:0 0 18px}
+.field{margin:0 0 18px}
+label.q{display:block;font-weight:600;font-size:14.5px;margin:0 0 6px}
+label.q .req{color:var(--alert);font-weight:500}
+.help{font-size:12.5px;color:var(--mute);margin:-2px 0 7px;line-height:1.4}
+input[type=text],input[type=tel],input[type=number],input[type=password],select,textarea{
+  width:100%;padding:11px 12px;border:1px solid var(--line);background:var(--card);
+  border-radius:2px;font-family:var(--disp);font-size:15px;color:var(--ink)
+}
+input[type=number]{font-family:var(--mono)}
+textarea{min-height:92px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible,.opt:focus-within{
+  outline:2px solid var(--signal);outline-offset:1px
+}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:420px){.grid2{grid-template-columns:1fr}}
+
+/* opcoes */
+.opts{display:flex;flex-direction:column;gap:6px}
+.opts.row{flex-direction:row;flex-wrap:wrap}
+.opt{
+  display:flex;align-items:flex-start;gap:9px;padding:10px 12px;background:var(--card);
+  border:1px solid var(--line);border-radius:2px;cursor:pointer;font-size:14.5px
+}
+.opts.row .opt{flex:1;min-width:112px}
+.opt input{margin:2px 0 0;accent-color:var(--ink)}
+.opt.sel{border-color:var(--ink);background:#fff;box-shadow:inset 3px 0 0 var(--signal)}
+.opt span small{display:block;color:var(--mute);font-size:12px;line-height:1.35;margin-top:1px}
+
+/* escala */
+.scale{display:flex;gap:5px}
+.scale button{
+  flex:1;padding:12px 0;border:1px solid var(--line);background:var(--card);
+  font-family:var(--mono);font-size:15px;font-weight:600;cursor:pointer;border-radius:2px;color:var(--steel)
+}
+.scale button.sel{background:var(--ink);color:#fff;border-color:var(--ink)}
+.anchor{font-family:var(--mono);font-size:11px;color:var(--mute);margin-top:6px;min-height:15px}
+
+/* regioes */
+.reg{border:1px solid var(--line);background:var(--card);border-radius:2px;margin-bottom:6px}
+.reg .top{display:flex;align-items:center;gap:9px;padding:10px 12px;cursor:pointer}
+.reg .top b{font-weight:600;font-size:14.5px}
+.reg .top code{font-family:var(--mono);font-size:11px;color:var(--mute);margin-left:auto}
+.reg .freq{display:none;border-top:1px solid var(--line-soft);padding:9px 12px;gap:6px}
+.reg.sel .freq{display:flex}
+.reg.sel{box-shadow:inset 3px 0 0 var(--signal)}
+.freq button{
+  flex:1;padding:7px;border:1px solid var(--line);background:#fff;border-radius:2px;
+  font-family:var(--disp);font-size:12.5px;cursor:pointer;color:var(--steel)
+}
+.freq button.sel{background:var(--steel);color:#fff;border-color:var(--steel)}
+
+/* placa e rodizio */
+.placa-wrap{display:flex;gap:9px;align-items:stretch}
+.placa-wrap input{text-transform:uppercase;font-family:var(--mono);letter-spacing:.14em;font-size:16px}
+.stamp{
+  min-width:132px;border:1px dashed var(--line);border-radius:2px;background:var(--card);
+  display:flex;flex-direction:column;justify-content:center;padding:6px 10px
+}
+.stamp.on{border:1px solid var(--ink);background:var(--signal-soft);border-style:solid}
+.stamp em{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--mute);font-style:normal
+}
+.stamp strong{font-size:15px;font-weight:700;line-height:1.2}
+@media(max-width:420px){.placa-wrap{flex-direction:column}.stamp{min-height:52px}}
+
+/* navegacao */
+.nav{display:flex;gap:9px;margin-top:26px}
+button.btn{
+  padding:13px 20px;border-radius:2px;border:1px solid var(--ink);background:var(--ink);color:#fff;
+  font-family:var(--disp);font-weight:600;font-size:14.5px;cursor:pointer;flex:1
+}
+button.btn.ghost{background:transparent;color:var(--ink);flex:0 0 auto;padding:13px 16px}
+button.btn.small{padding:9px 13px;font-size:13px;flex:0 0 auto}
+button.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.err{
+  background:var(--alert-soft);border-left:3px solid var(--alert);padding:10px 12px;
+  font-size:13.5px;margin:0 0 16px;color:#6E1C16
+}
+.note{
+  background:var(--card);border:1px solid var(--line-soft);border-left:3px solid var(--steel);
+  padding:11px 13px;font-size:13px;color:var(--steel);margin:0 0 18px;line-height:1.45
+}
+
+/* rodape */
+.foot{
+  margin-top:34px;padding-top:14px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap
+}
+.foot a{color:var(--mute);text-decoration:none;border-bottom:1px solid var(--line);cursor:pointer}
+.foot a:hover{color:var(--ink)}
+
+/* painel */
+.tabs{display:flex;gap:2px;margin:0 0 18px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.tabs button{
+  padding:10px 14px;border:0;background:transparent;font-family:var(--mono);font-size:11.5px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--mute);cursor:pointer;border-bottom:2px solid transparent
+}
+.tabs button.sel{color:var(--ink);border-bottom-color:var(--signal)}
+.panel-card{background:var(--card);border:1px solid var(--line-soft);border-radius:2px;padding:15px 16px;margin-bottom:10px}
+.qh{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin:0 0 3px}
+.qt{font-weight:600;font-size:15px;margin:0 0 10px}
+.bar{display:flex;align-items:center;gap:9px;margin:0 0 5px;font-size:13.5px}
+.bar .lbl{flex:0 0 42%;color:var(--steel)}
+.bar .track{flex:1;height:14px;background:var(--paper);position:relative}
+.bar .fill{height:100%;background:var(--steel)}
+.bar .n{font-family:var(--mono);font-size:12px;color:var(--ink);flex:0 0 30px;text-align:right}
+ul.answers{margin:0;padding:0;list-style:none;font-size:13.5px}
+ul.answers li{padding:7px 0;border-top:1px solid var(--line-soft)}
+ul.answers li b{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--mute);display:block;text-transform:uppercase}
+table.data{width:100%;border-collapse:collapse;font-size:13px}
+table.data th{
+  text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--mute);padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap
+}
+table.data td{padding:8px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+table.data tr:hover td{background:var(--paper)}
+.tag{
+  display:inline-block;font-family:var(--mono);font-size:10.5px;padding:2px 6px;border-radius:2px;
+  letter-spacing:.05em;text-transform:uppercase
+}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}
+.tag.no{background:var(--alert-soft);color:var(--alert)}
+.tag.cond{background:var(--signal-soft);color:#7A5A08}
+.empty{padding:40px 16px;text-align:center;color:var(--mute);font-size:14px;background:var(--card);border:1px dashed var(--line)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.filters select,.filters input{width:auto;min-width:150px;flex:1}
+.kpis{display:flex;gap:8px;margin:0 0 16px;flex-wrap:wrap}
+.kpi{flex:1;min-width:110px;background:var(--card);border:1px solid var(--line-soft);padding:11px 13px}
+.kpi em{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--mute);font-style:normal;display:block}
+.kpi strong{font-size:23px;font-weight:700;font-family:var(--mono)}
+code.copy{
+  display:block;background:var(--ink);color:#D8DDE1;font-family:var(--mono);font-size:11px;
+  padding:11px;border-radius:2px;word-break:break-all;max-height:150px;overflow:auto;line-height:1.4
+}
+.center{text-align:center}
+.done-mark{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ok)}
+@media (prefers-reduced-motion:no-preference){
+  .block{animation:in .18s ease-out}
+  @keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+}
+</style>
+
+<div id="app"></div>
+
+<script>
+/* =========================================================================
+   CONFIGURAÇÃO  (edite apenas esta seção)
+   ========================================================================= */
+const SENHA_COORDENACAO = "icaro2026";   // troque antes de distribuir
+
+// Lista fechada de regiões. Formato: CODIGO | Nome | Faixa de CEP (opcional).
+// Substitua pela sua lista oficial de faixas de CEP classificadas.
+const REGIOES_PADRAO = [
+  "SP-CEN|Capital - Centro|",
+  "SP-NOR|Capital - Zona Norte|",
+  "SP-SUL|Capital - Zona Sul|",
+  "SP-LE1|Capital - Zona Leste 1|",
+  "SP-LE2|Capital - Zona Leste 2|",
+  "SP-OES|Capital - Zona Oeste|",
+  "GRU|Guarulhos e Arujá|",
+  "ABC|ABC (S.André, S.B.Campo, S.Caetano, Diadema, Mauá)|",
+  "OSA|Osasco, Barueri, Carapicuíba, Jandira|",
+  "TAB|Taboão, Embu, Itapecerica, Cotia|",
+  "MOG|Mogi, Suzano, Itaquaquecetuba, Poá|",
+  "GUA|Guarujá e Baixada Santista|",
+  "CAM|Campinas e região|",
+  "SOR|Sorocaba e região|",
+  "VPA|Vale do Paraíba|",
+  "LIT|Litoral Norte|"
+];
+
+/* =========================================================================
+   ESQUEMA DO FORMULÁRIO
+   ========================================================================= */
+const BLOCOS = [
+{ id:"b1", titulo:"Identificação", sub:"Dados do motorista e do veículo.", campos:[
+  {id:"nome", label:"Nome completo", type:"text", req:true},
+  {id:"fone", label:"Telefone com WhatsApp", type:"tel", req:true, help:"Formato: (11) 90000-0000"},
+  {id:"placa", label:"Placa do veículo", type:"placa", req:true, help:"O dia de rodízio é calculado pelo final da placa. Você não precisa informar."},
+  {id:"veiculo", label:"Tipo de veículo", type:"radio", req:true, opcoes:["Fiorino","VUC","3/4","Toco","Truck"], row:true},
+  {id:"cap_m3", label:"Capacidade em m³", type:"number"},
+  {id:"cap_kg", label:"Capacidade em kg", type:"number"},
+  {id:"ajudante", label:"Trabalha com ajudante próprio", type:"radio", req:true, opcoes:["Sim","Não"], row:true}
+]},
+
+{ id:"b2", titulo:"Base do veículo", sub:"Só o CEP. Não pedimos endereço completo.", campos:[
+  {id:"cep", label:"CEP da sua base", type:"cep", req:true,
+   help:"Somente números. Usamos apenas para calcular a distância até a primeira entrega."},
+  {id:"pernoite_base", label:"O veículo pernoita neste CEP", type:"radio", req:true, opcoes:["Sim","Não"], row:true},
+  {id:"cep_pernoite", label:"CEP onde o veículo pernoita", type:"cep", dep:{campo:"pernoite_base", valor:"Não"},
+   help:"O ponto de pernoite define a distância real de saída."}
+]},
+
+{ id:"b3", titulo:"Regiões que você atende", sub:"Marque cada região e informe com que frequência atende.", campos:[
+  {id:"regioes", label:"Regiões de atendimento", type:"regioes", req:true,
+   help:"Marque apenas onde você realmente roda. Cada região marcada gera perguntas específicas no bloco 6."},
+  {id:"interior", label:"Aceita viagem para interior", type:"radio", req:true, opcoes:["Sim","Não"], row:true},
+  {id:"interior_km", label:"Distância máxima que aceita (km)", type:"number", dep:{campo:"interior", valor:"Sim"}},
+  {id:"pernoite_fora", label:"Aceita pernoitar fora da base", type:"radio", req:true, opcoes:["Sim","Não"], row:true}
+]},
+
+{ id:"b4", titulo:"Disponibilidade", sub:"Dias e horários em que você consegue carregar.", campos:[
+  {id:"dias", label:"Dias da semana em que está disponível", type:"check", req:true,
+   opcoes:["Segunda","Terça","Quarta","Quinta","Sexta","Sábado"], row:true},
+  {id:"janela1", label:"Melhor horário para carregamento", type:"radio", req:true,
+   opcoes:["06h às 08h","08h às 10h","10h às 12h","12h às 14h","Após 14h"]},
+  {id:"janela2", label:"Segundo horário aceitável", type:"radio",
+   opcoes:["06h às 08h","08h às 10h","10h às 12h","12h às 14h","Após 14h","Não tenho alternativa"]},
+  {id:"restricao_horario", label:"Restrições próprias de horário", type:"text",
+   help:"Exemplo: não carrego antes das 7h, preciso liberar até as 18h."}
+]},
+
+{ id:"b5", titulo:"Áreas de risco e restrições", sub:"Responda com precisão. Este bloco trava a alocação de rota.", campos:[
+  {id:"aceita_risco", label:"Você aceita entrega em regiões classificadas como área de risco pela Ícaro", type:"radio", req:true,
+   opcoes:[
+     "Sim, sem restrição",
+     "Sim, com condições",
+     "Não aceito"
+   ],
+   help:"A classificação de risco é a oficial da Ícaro, validada com a Pamcary. Você está informando se aceita, não definindo o que é risco."},
+  {id:"condicoes_risco", label:"Quais condições", type:"check", dep:{campo:"aceita_risco", valor:"Sim, com condições"},
+   opcoes:[
+     "Somente até determinado horário",
+     "Somente com contato prévio do cliente",
+     "Somente sem carga de alto valor",
+     "Somente acompanhado ou com apoio",
+     "Somente em rota com outras entregas na mesma região"
+   ]},
+  {id:"nao_atende", label:"Regiões que você não atende de forma alguma", type:"regioes_simples",
+   help:"Deixe em branco se não houver."},
+  {id:"nao_atende_outros", label:"Bairros ou comunidades específicas que não atende", type:"textarea",
+   help:"Escreva um por linha."},
+  {id:"motivo_restricao", label:"Motivo da restrição", type:"check",
+   opcoes:["Segurança","Acesso físico impossível para o veículo","Distância inviável","Experiência anterior ruim","Restrição do seguro"]}
+]},
+
+{ id:"b6", titulo:"Detalhes por região", sub:"Estas respostas alimentam a precificação e o dimensionamento da rota.",
+  porRegiao:true, campos:[
+  {id:"acesso", label:"Dificuldade de acesso", type:"escala", req:true,
+   ancoras:["1 - Via livre, descarga na porta","2 - Pequena dificuldade de estacionar","3 - Rua estreita, exige manobra","4 - Acesso a pé em parte do trecho","5 - Sem acesso veicular, transbordo obrigatório"]},
+  {id:"via", label:"Tipo de via predominante", type:"radio", req:true,
+   opcoes:["Via larga","Rua estreita","Viela","Escada ou acesso a pé"]},
+  {id:"transbordo", label:"Precisa de carrinho ou transbordo", type:"radio", req:true, opcoes:["Sim","Não"], row:true},
+  {id:"tempo_descarga", label:"Tempo médio de descarga por entrega", type:"radio", req:true,
+   opcoes:["Até 15 min","15 a 30 min","30 a 60 min","Mais de 60 min"]},
+  {id:"perfil_cliente", label:"Perfil do cliente nesta região", type:"check",
+   opcoes:["Exige agendamento","Ausência frequente","Índice alto de recusa","Exige montagem ou conferência demorada","Sem particularidade"]},
+  {id:"restricao_mun", label:"Restrição de circulação na região", type:"check",
+   opcoes:["ZMRC","Somente VUC","Restrição de horário","Zona azul ou sem local de parada","Nenhuma"]},
+  {id:"entregas_dia", label:"Quantas entregas você consegue fazer por dia nesta região", type:"number", req:true},
+  {id:"km_ultima", label:"Distância aproximada da base até a última entrega (km)", type:"number"}
+]},
+
+{ id:"b7", titulo:"Observações", sub:"Último bloco.", campos:[
+  {id:"obs", label:"Alguma informação que não foi perguntada", type:"textarea",
+   help:"Use apenas para o que não coube nos campos anteriores."}
+]}
+];
+
+/* =========================================================================
+   INFRA
+   ========================================================================= */
+const $ = s => document.querySelector(s);
+const app = $("#app");
+let REGIOES = REGIOES_PADRAO.slice();
+let modo = "inicio";
+let etapa = 0;
+let resp = {};        // respostas do bloco geral
+let respReg = {};     // respostas por regiao: { COD: {campo:valor} }
+let erroMsg = "";
+let painelTab = "pergunta";
+let registros = [];
+let filtro = {regiao:"", dia:"", veiculo:"", risco:""};
+
+function parseReg(s){const p=s.split("|");return {cod:p[0],nome:p[1]||p[0],cep:(p[2]||"").trim()};}
+function regList(){return REGIOES.map(parseReg);}
+function regNome(cod){const r=regList().find(x=>x.cod===cod);return r?r.nome:cod;}
+
+const DIAS_RODIZIO = {1:"Segunda-feira",2:"Segunda-feira",3:"Terça-feira",4:"Terça-feira",
+  5:"Quarta-feira",6:"Quarta-feira",7:"Quinta-feira",8:"Quinta-feira",9:"Sexta-feira",0:"Sexta-feira"};
+function rodizioDe(placa){
+  const s=(placa||"").replace(/[^0-9A-Za-z]/g,"");
+  if(s.length<7) return null;
+  const d=s.slice(-1);
+  if(!/[0-9]/.test(d)) return null;
+  return DIAS_RODIZIO[parseInt(d,10)];
+}
+
+/* --- storage do ambiente Claude (reserva) --- */
+async function storageGet(k){try{const r=await window.storage.get(k,true);return r?r.value:null}catch(e){return null}}
+async function storageSet(k,v){try{return await window.storage.set(k,v,true)}catch(e){return null}}
+async function storageList(p){try{const r=await window.storage.list(p,true);return r?r.keys:[]}catch(e){return []}}
+
+/* --- config local: localStorage no navegador (GitHub), storage como reserva --- */
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v);return true}catch(e){return false}}
+async function cfgGet(k){const v=lsGet(k);if(v!=null)return v;return await storageGet(k);}
+async function cfgSet(k,v){lsSet(k,v);try{await storageSet(k,v);}catch(e){}}
+
+/* --- backend: Google Apps Script (planilha) --- */
+let BACKEND = "";           // URL do Web App do Apps Script
+let statusBackend = "";     // mensagem de erro da ultima leitura
+
+async function apiEnviar(reg){
+  const res = await fetch(BACKEND, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(reg)});
+  const j = await res.json();
+  return !!(j && j.ok);
+}
+async function apiListar(){
+  const url = BACKEND + (BACKEND.includes("?")?"&":"?") + "t=" + Date.now();
+  const res = await fetch(url);
+  const j = await res.json();
+  return Array.isArray(j) ? j : (j.registros||[]);
+}
+
+async function carregarConfig(){
+  BACKEND = (await cfgGet("config:backend")) || "";
+  const c = await cfgGet("config:regioes");
+  if(c){try{const a=JSON.parse(c);if(Array.isArray(a)&&a.length)REGIOES=a;}catch(e){}}
+}
+
+async function carregarRegistros(){
+  statusBackend = "";
+  if(BACKEND){
+    try{
+      const arr = await apiListar();
+      registros = (arr||[]).sort((a,b)=>(b.enviado_em||"").localeCompare(a.enviado_em||""));
+    }catch(e){
+      registros = [];
+      statusBackend = "Não consegui ler a planilha. Confira a URL do Apps Script na aba Config.";
+    }
+    return;
+  }
+  // reserva: ambiente Claude
+  const keys = await storageList("resp:");
+  const out=[];
+  for(const k of keys){
+    const v = await storageGet(k);
+    if(v){try{out.push(JSON.parse(v))}catch(e){}}
+  }
+  registros = out.sort((a,b)=>(b.enviado_em||"").localeCompare(a.enviado_em||""));
+}
+
+/* =========================================================================
+   RENDER: telas
+   ========================================================================= */
+function render(){
+  if(modo==="inicio") return telaInicio();
+  if(modo==="form") return telaForm();
+  if(modo==="enviado") return telaEnviado();
+  if(modo==="login") return telaLogin();
+  if(modo==="painel") return telaPainel();
+}
+
+function cabecalho(titulo, sub, meta){
+  return `<div class="ticket">
+    <p class="eyebrow">Ícaro Express · Filial São Paulo</p>
+    <h1>${titulo}</h1>
+    ${sub?`<p>${sub}</p>`:""}
+    <div class="meta">${(meta||[]).map(m=>`<span>${m}</span>`).join("")}</div>
+  </div>`;
+}
+
+function rodape(){
+  return `<div class="foot">
+    <span>Uso interno · Planejamento de rotas</span>
+    <a onclick="irLogin()">Acesso da coordenação</a>
+  </div>`;
+}
+
+function telaInicio(){
+  app.className="wrap";
+  app.innerHTML = cabecalho(
+    "Cadastro operacional de motoristas",
+    "Suas respostas montam o mapa de cobertura usado pelo planejador para distribuir as rotas. Leva cerca de 10 minutos.",
+    ["Versão 1.0","Escopo: São Paulo","7 blocos"]
+  ) + `
+  <div class="note">
+    <b>Antes de começar, tenha em mãos:</b> a placa do veículo, o CEP da sua base e a capacidade aproximada do baú em m³ e kg. Não pedimos CPF nem endereço completo.
+  </div>
+  <p style="font-size:14px;color:var(--steel);margin:0 0 20px">
+    O bloco 6 se repete para cada região que você marcar. Marque apenas as regiões em que realmente roda,
+    ou o formulário fica longo sem necessidade.
+  </p>
+  <div class="nav"><button class="btn" onclick="iniciar()">Começar o cadastro</button></div>
+  ${rodape()}`;
+}
+
+function telaEnviado(){
+  app.className="wrap";
+  const pacote = btoa(unescape(encodeURIComponent(JSON.stringify(montarRegistro()))));
+  const falhou = resp.__ok===false && BACKEND;
+  app.innerHTML = cabecalho(falhou?"Confirme o envio":"Cadastro enviado",
+    falhou?"Não foi possível gravar automaticamente. Envie o código abaixo pela coordenação.":"Obrigado. Seus dados já estão disponíveis para o planejamento.",
+    ["Protocolo "+(resp.__id||"")]) + `
+  <p class="center done-mark">${falhou?"Pendente de confirmação":"Registro gravado"}</p>
+  <div class="note" style="margin-top:18px">
+    ${falhou?"Sem internet no momento do envio. ":"Se a coordenação pedir confirmação, "}envie o código abaixo pelo WhatsApp. Ele contém as mesmas respostas.
+  </div>
+  <code class="copy" id="pack">${pacote}</code>
+  <div class="nav">
+    <button class="btn ghost" onclick="copiarCodigo()">Copiar código</button>
+    <button class="btn" onclick="baixarJSON()">Baixar cópia</button>
+  </div>
+  ${rodape()}`;
+}
+
+/* ---------- formulario ---------- */
+function blocosAtivos(){
+  const out=[];
+  BLOCOS.forEach(b=>{
+    if(!b.porRegiao){out.push({tipo:"bloco",ref:b});return;}
+    const regs = Object.keys(resp.regioes||{});
+    regs.forEach(c=>out.push({tipo:"regiao",ref:b,cod:c}));
+  });
+  return out;
+}
+
+function telaForm(){
+  app.className="wrap";
+  const lista = blocosAtivos();
+  const at = lista[etapa];
+  const total = lista.length;
+  const numero = at.tipo==="regiao" ? `Bloco 6 · ${regNome(at.cod)}` : `Bloco ${BLOCOS.indexOf(at.ref)+1} de ${BLOCOS.length}`;
+
+  let campos = at.ref.campos.map(c=>renderCampo(c, at.tipo==="regiao"?at.cod:null)).join("");
+
+  app.innerHTML = cabecalho("Cadastro operacional de motoristas","",["Etapa "+(etapa+1)+" de "+total]) + `
+    <div class="steps">${lista.map((_,i)=>`<i class="${i===etapa?'on':(i<etapa?'done':'')}"></i>`).join("")}</div>
+    <p class="stepinfo">${numero}</p>
+    ${erroMsg?`<div class="err">${erroMsg}</div>`:""}
+    <div class="block">
+      <h2>${at.tipo==="regiao"?regNome(at.cod):at.ref.titulo}</h2>
+      <p class="sub">${at.ref.sub||""}</p>
+      ${campos}
+    </div>
+    <div class="nav">
+      ${etapa>0?`<button class="btn ghost" onclick="voltar()">Voltar</button>`:""}
+      <button class="btn" onclick="avancar()">${etapa===total-1?"Enviar cadastro":"Continuar"}</button>
+    </div>
+    ${rodape()}`;
+  erroMsg="";
+}
+
+function valorDe(campo, cod){
+  if(cod) return (respReg[cod]||{})[campo.id];
+  return resp[campo.id];
+}
+
+function renderCampo(c, cod){
+  if(c.dep){
+    const v = cod?(respReg[cod]||{})[c.dep.campo]:resp[c.dep.campo];
+    if(v!==c.dep.valor) return "";
+  }
+  const v = valorDe(c,cod);
+  const idAttr = cod? `${cod}::${c.id}` : c.id;
+  const lab = `<label class="q" for="f_${idAttr}">${c.label}${c.req?' <span class="req">*</span>':''}</label>`
+    + (c.help?`<p class="help">${c.help}</p>`:"");
+  const setter = `setVal('${c.id}','${cod||""}',this.value)`;
+
+  if(c.type==="text"||c.type==="tel")
+    return `<div class="field">${lab}<input type="text" id="f_${idAttr}" value="${esc(v||"")}" oninput="${setter}"></div>`;
+
+  if(c.type==="cep")
+    return `<div class="field">${lab}<input type="text" inputmode="numeric" maxlength="9" placeholder="00000-000" id="f_${idAttr}" value="${esc(v||"")}" oninput="${setter}"></div>`;
+
+  if(c.type==="number")
+    return `<div class="field">${lab}<input type="number" inputmode="numeric" id="f_${idAttr}" value="${esc(v||"")}" oninput="${setter}"></div>`;
+
+  if(c.type==="textarea")
+    return `<div class="field">${lab}<textarea id="f_${idAttr}" oninput="${setter}">${esc(v||"")}</textarea></div>`;
+
+  if(c.type==="placa"){
+    const rod = rodizioDe(v);
+    return `<div class="field">${lab}
+      <div class="placa-wrap">
+        <input type="text" id="f_placa" maxlength="8" placeholder="ABC1D23" value="${esc(v||"")}"
+          oninput="setPlaca(this.value)">
+        <div class="stamp ${rod?'on':''}">
+          <em>Rodízio</em>
+          <strong>${rod||"—"}</strong>
+        </div>
+      </div>
+      ${rod?`<p class="help" style="margin-top:7px">Restrição no centro expandido das 7h às 10h e das 17h às 20h.</p>`:""}
+    </div>`;
+  }
+
+  if(c.type==="radio"){
+    return `<div class="field">${lab}<div class="opts ${c.row?'row':''}">${
+      c.opcoes.map(o=>`<label class="opt ${v===o?'sel':''}">
+        <input type="radio" name="r_${idAttr}" ${v===o?'checked':''} onchange="setVal('${c.id}','${cod||""}','${esc(o)}')">
+        <span>${o}</span></label>`).join("")}</div></div>`;
+  }
+
+  if(c.type==="check"){
+    const arr = Array.isArray(v)?v:[];
+    return `<div class="field">${lab}<div class="opts ${c.row?'row':''}">${
+      c.opcoes.map(o=>`<label class="opt ${arr.includes(o)?'sel':''}">
+        <input type="checkbox" ${arr.includes(o)?'checked':''} onchange="toggleVal('${c.id}','${cod||""}','${esc(o)}')">
+        <span>${o}</span></label>`).join("")}</div></div>`;
+  }
+
+  if(c.type==="escala"){
+    const sel = v?parseInt(v,10):0;
+    return `<div class="field">${lab}
+      <div class="scale">${[1,2,3,4,5].map(n=>`<button type="button" class="${sel===n?'sel':''}"
+        onclick="setVal('${c.id}','${cod||""}','${n}')">${n}</button>`).join("")}</div>
+      <p class="anchor">${sel?esc(c.ancoras[sel-1]):"1 = fácil · 5 = muito difícil"}</p></div>`;
+  }
+
+  if(c.type==="regioes"){
+    const map = resp.regioes||{};
+    return `<div class="field">${lab}
+      ${regList().map(r=>`<div class="reg ${map[r.cod]?'sel':''}">
+        <div class="top" onclick="toggleRegiao('${r.cod}')">
+          <input type="checkbox" ${map[r.cod]?'checked':''} onclick="event.stopPropagation();toggleRegiao('${r.cod}')">
+          <b>${r.nome}</b><code>${r.cep||r.cod}</code>
+        </div>
+        <div class="freq">
+          ${["Sempre","Eventual"].map(f=>`<button type="button" class="${map[r.cod]===f?'sel':''}"
+            onclick="setFreq('${r.cod}','${f}')">${f}</button>`).join("")}
+        </div>
+      </div>`).join("")}</div>`;
+  }
+
+  if(c.type==="regioes_simples"){
+    const arr = Array.isArray(resp.nao_atende)?resp.nao_atende:[];
+    return `<div class="field">${lab}<div class="opts">${
+      regList().map(r=>`<label class="opt ${arr.includes(r.cod)?'sel':''}">
+        <input type="checkbox" ${arr.includes(r.cod)?'checked':''} onchange="toggleVal('nao_atende','','${r.cod}')">
+        <span>${r.nome}</span></label>`).join("")}</div></div>`;
+  }
+  return "";
+}
+
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+
+/* ---------- handlers ---------- */
+window.iniciar = ()=>{modo="form";etapa=0;render();};
+window.setVal = (id,cod,val)=>{
+  if(cod){respReg[cod]=respReg[cod]||{};respReg[cod][id]=val;}
+  else resp[id]=val;
+  const c = todosCampos().find(x=>x.id===id);
+  const precisaRedesenhar = c && (c.type==="radio"||c.type==="escala") ;
+  if(precisaRedesenhar) render();
+};
+window.toggleVal = (id,cod,val)=>{
+  const alvo = cod?(respReg[cod]=respReg[cod]||{}):resp;
+  const arr = Array.isArray(alvo[id])?alvo[id].slice():[];
+  const i = arr.indexOf(val);
+  if(i>=0) arr.splice(i,1); else arr.push(val);
+  alvo[id]=arr; render();
+};
+window.setPlaca = (v)=>{
+  resp.placa = v.toUpperCase();
+  const el = document.querySelector(".stamp");
+  const rod = rodizioDe(resp.placa);
+  if(el){el.className="stamp "+(rod?"on":"");el.querySelector("strong").textContent = rod||"—";}
+};
+window.toggleRegiao = (cod)=>{
+  resp.regioes = resp.regioes||{};
+  if(resp.regioes[cod]){delete resp.regioes[cod];delete respReg[cod];}
+  else resp.regioes[cod]="Sempre";
+  render();
+};
+window.setFreq = (cod,f)=>{resp.regioes[cod]=f;render();};
+window.voltar = ()=>{etapa--;window.scrollTo(0,0);render();};
+
+function todosCampos(){let o=[];BLOCOS.forEach(b=>o=o.concat(b.campos));return o;}
+
+window.avancar = async ()=>{
+  const lista = blocosAtivos();
+  const at = lista[etapa];
+  const cod = at.tipo==="regiao"?at.cod:null;
+  const faltando = [];
+  at.ref.campos.forEach(c=>{
+    if(!c.req) return;
+    if(c.dep){const v=cod?(respReg[cod]||{})[c.dep.campo]:resp[c.dep.campo];if(v!==c.dep.valor)return;}
+    const v = valorDe(c,cod);
+    const vazio = v==null||v===""||(Array.isArray(v)&&!v.length)||(c.type==="regioes"&&!Object.keys(resp.regioes||{}).length);
+    if(vazio) faltando.push(c.label);
+    if(c.type==="placa" && v && !rodizioDe(v)) faltando.push("Placa em formato inválido");
+    if(c.type==="cep" && v && !/^[0-9]{5}-?[0-9]{3}$/.test(String(v).trim())) faltando.push("CEP em formato inválido");
+  });
+  if(faltando.length){
+    erroMsg = "Falta preencher: "+faltando.join("; ")+".";
+    render();window.scrollTo(0,0);return;
+  }
+  if(etapa===lista.length-1){ await enviar(); return; }
+  etapa++;window.scrollTo(0,0);render();
+};
+
+function montarRegistro(){
+  return {
+    id: resp.__id,
+    enviado_em: resp.__quando,
+    rodizio: rodizioDe(resp.placa),
+    geral: Object.fromEntries(Object.entries(resp).filter(([k])=>!k.startsWith("__"))),
+    regioes: respReg
+  };
+}
+
+async function enviar(){
+  resp.__id = "MOT-"+Date.now().toString(36).toUpperCase().slice(-6);
+  resp.__quando = new Date().toISOString();
+  const reg = montarRegistro();
+  resp.__ok = false;
+  if(BACKEND){
+    try{ resp.__ok = await apiEnviar(reg); }catch(e){ resp.__ok = false; }
+  }else{
+    await storageSet("resp:"+resp.__id, JSON.stringify(reg));  // reserva ambiente Claude
+    resp.__ok = true;
+  }
+  modo="enviado";window.scrollTo(0,0);render();
+}
+
+window.copiarCodigo = ()=>{
+  const t = $("#pack").textContent;
+  navigator.clipboard.writeText(t).then(()=>alert("Código copiado."),()=>alert("Selecione o código e copie manualmente."));
+};
+window.baixarJSON = ()=>{
+  baixar("cadastro-"+(resp.__id||"motorista")+".json", JSON.stringify(montarRegistro(),null,2), "application/json");
+};
+function baixar(nome, conteudo, tipo){
+  const b = new Blob(["\ufeff"+conteudo],{type:tipo+";charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(b); a.download = nome; a.click();
+}
+
+/* =========================================================================
+   COORDENAÇÃO
+   ========================================================================= */
+window.irLogin = ()=>{modo="login";window.scrollTo(0,0);render();};
+function telaLogin(){
+  app.className="wrap";
+  app.innerHTML = cabecalho("Acesso da coordenação","Área de consulta das respostas.",["Restrito"]) + `
+    ${erroMsg?`<div class="err">${erroMsg}</div>`:""}
+    <div class="field"><label class="q" for="pw">Senha</label>
+      <input type="password" id="pw" onkeydown="if(event.key==='Enter')entrar()"></div>
+    <div class="nav">
+      <button class="btn ghost" onclick="modo='inicio';render()">Voltar</button>
+      <button class="btn" onclick="entrar()">Entrar</button>
+    </div>`;
+  setTimeout(()=>{const e=$("#pw");if(e)e.focus();},50);
+  erroMsg="";
+}
+window.entrar = async ()=>{
+  if($("#pw").value !== SENHA_COORDENACAO){erroMsg="Senha incorreta.";render();return;}
+  app.innerHTML = `<div class="wrap"><p class="empty">Carregando respostas...</p></div>`;
+  await carregarRegistros();
+  modo="painel";window.scrollTo(0,0);render();
+};
+
+function telaPainel(){
+  app.className="wrap wide";
+  const abas = [["pergunta","Por pergunta"],["motorista","Por motorista"],["ficha","Fichas"],["consulta","Consulta de rota"],["exportar","Exportar"],["config","Regiões"]];
+  let corpo="";
+  if(painelTab==="pergunta") corpo=viewPorPergunta();
+  if(painelTab==="motorista") corpo=viewPorMotorista();
+  if(painelTab==="ficha") corpo=viewFichas();
+  if(painelTab==="consulta") corpo=viewConsulta();
+  if(painelTab==="exportar") corpo=viewExportar();
+  if(painelTab==="config") corpo=viewConfig();
+
+  const totalReg = registros.reduce((a,r)=>a+Object.keys(r.regioes||{}).length,0);
+  const recusam = registros.filter(r=>(r.geral.aceita_risco||"")==="Não aceito").length;
+
+  app.innerHTML = cabecalho("Painel de coordenação","Respostas do cadastro operacional de motoristas.",
+    ["Filial São Paulo","Atualizado "+new Date().toLocaleString("pt-BR")]) + `
+    <div class="kpis">
+      <div class="kpi"><em>Motoristas</em><strong>${registros.length}</strong></div>
+      <div class="kpi"><em>Pares motorista x região</em><strong>${totalReg}</strong></div>
+      <div class="kpi"><em>Recusam área de risco</em><strong>${recusam}</strong></div>
+      <div class="kpi"><em>Regiões cadastradas</em><strong>${REGIOES.length}</strong></div>
+    </div>
+    <div class="tabs">${abas.map(([k,l])=>`<button class="${painelTab===k?'sel':''}" onclick="setTab('${k}')">${l}</button>`).join("")}</div>
+    ${corpo}
+    <div class="foot"><span>Ícaro Express · uso interno</span><a onclick="sair()">Sair</a></div>`;
+}
+window.setTab = k=>{painelTab=k;window.scrollTo(0,0);render();};
+window.sair = ()=>{modo="inicio";painelTab="pergunta";render();};
+window.recarregar = async ()=>{await carregarRegistros();render();};
+
+/* --- por pergunta --- */
+function viewPorPergunta(){
+  if(!registros.length) return `<div class="empty">Nenhuma resposta recebida ainda.<br>Distribua o link do formulário aos motoristas.</div>`;
+  let html = `<div style="margin:0 0 12px"><button class="btn small ghost" onclick="recarregar()">Atualizar respostas</button></div>`;
+
+  BLOCOS.forEach((b,bi)=>{
+    if(b.porRegiao) return;
+    b.campos.forEach(c=>{
+      const linhas = registros.map(r=>({nome:r.geral.nome||r.id, v:r.geral[c.id]})).filter(x=>x.v!=null&&x.v!=="");
+      html += cardPergunta(`Bloco ${bi+1} · ${b.titulo}`, c, linhas);
+    });
+  });
+
+  // bloco por regiao, agrupado por regiao
+  const b6 = BLOCOS.find(b=>b.porRegiao);
+  const codsUsados = [...new Set(registros.flatMap(r=>Object.keys(r.regioes||{})))];
+  if(codsUsados.length){
+    html += `<h2 style="font-size:17px;margin:26px 0 10px">Bloco 6 · Detalhes por região</h2>`;
+    codsUsados.sort().forEach(cod=>{
+      html += `<p class="qh" style="margin:16px 0 6px;color:var(--ink)">${regNome(cod)}</p>`;
+      b6.campos.forEach(c=>{
+        const linhas = registros.filter(r=>r.regioes&&r.regioes[cod])
+          .map(r=>({nome:r.geral.nome||r.id, v:r.regioes[cod][c.id]}))
+          .filter(x=>x.v!=null&&x.v!=="");
+        html += cardPergunta(regNome(cod), c, linhas);
+      });
+    });
+  }
+  return html;
+}
+
+function cardPergunta(contexto, c, linhas){
+  if(!linhas.length) return "";
+  const fechada = ["radio","check","escala","regioes_simples"].includes(c.type);
+  let corpo="";
+  if(fechada){
+    const cont={};
+    linhas.forEach(l=>{
+      const vs = Array.isArray(l.v)?l.v:[l.v];
+      vs.forEach(v=>{const k = c.type==="regioes_simples"?regNome(v):String(v);cont[k]=(cont[k]||0)+1;});
+    });
+    const max = Math.max(...Object.values(cont));
+    corpo = Object.entries(cont).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`
+      <div class="bar"><span class="lbl">${esc(k)}</span>
+        <span class="track"><span class="fill" style="width:${(n/max*100).toFixed(0)}%"></span></span>
+        <span class="n">${n}</span></div>`).join("");
+    const abertos = linhas.map(l=>`<li><b>${esc(l.nome)}</b>${esc(Array.isArray(l.v)?l.v.join(", "):l.v)}</li>`).join("");
+    corpo += `<details style="margin-top:9px"><summary style="font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);cursor:pointer">Ver quem respondeu o quê</summary><ul class="answers">${abertos}</ul></details>`;
+  } else {
+    corpo = `<ul class="answers">${linhas.map(l=>`<li><b>${esc(l.nome)}</b>${esc(Array.isArray(l.v)?l.v.join(", "):l.v)}</li>`).join("")}</ul>`;
+  }
+  return `<div class="panel-card"><p class="qh">${esc(contexto)}</p><p class="qt">${esc(c.label)}</p>${corpo}</div>`;
+}
+
+/* --- por motorista --- */
+function viewPorMotorista(){
+  if(!registros.length) return `<div class="empty">Nenhuma resposta recebida ainda.</div>`;
+  return registros.map(r=>{
+    const g=r.geral;
+    const tagRisco = g.aceita_risco==="Não aceito"?`<span class="tag no">recusa risco</span>`
+      : g.aceita_risco==="Sim, com condições"?`<span class="tag cond">risco com condição</span>`
+      : `<span class="tag ok">aceita risco</span>`;
+    const regs = Object.entries(r.regioes||{}).map(([cod,d])=>`
+      <tr><td><b>${regNome(cod)}</b><br><span style="color:var(--mute);font-size:11.5px">${(g.regioes||{})[cod]||""}</span></td>
+      <td>${d.acesso||"-"}/5</td><td>${esc(d.via||"-")}</td><td>${esc(d.tempo_descarga||"-")}</td>
+      <td>${esc(d.entregas_dia||"-")}</td><td>${esc((d.restricao_mun||[]).join(", ")||"-")}</td></tr>`).join("");
+    return `<div class="panel-card">
+      <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
+        <b style="font-size:16px">${esc(g.nome||r.id)}</b>
+        <span class="tag" style="background:var(--paper);color:var(--steel)">${esc(g.veiculo||"")}</span>
+        ${tagRisco}
+        <span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--mute)">${r.id}</span>
+      </div>
+      <p style="font-family:var(--mono);font-size:12px;color:var(--steel);margin:8px 0 12px">
+        ${esc(g.placa||"")} · rodízio ${esc(r.rodizio||"-")} · ${esc(g.fone||"")}<br>
+        CEP base ${esc(g.cep||"")}${g.cep_pernoite?" · pernoite "+esc(g.cep_pernoite):""}<br>
+        Carrega: ${esc(g.janela1||"-")} · Dias: ${esc((g.dias||[]).join(", ")||"-")}
+      </p>
+      ${regs?`<table class="data"><thead><tr><th>Região</th><th>Acesso</th><th>Via</th><th>Descarga</th><th>Entr./dia</th><th>Restrição</th></tr></thead><tbody>${regs}</tbody></table>`:""}
+      ${(g.nao_atende||[]).length||g.nao_atende_outros?`<p style="margin:11px 0 0;font-size:13px;color:var(--alert)">
+        <b>Não atende:</b> ${esc(((g.nao_atende||[]).map(regNome)).join(", "))} ${esc(g.nao_atende_outros||"")}</p>`:""}
+      ${g.obs?`<p style="margin:9px 0 0;font-size:13px;color:var(--steel)"><b>Obs:</b> ${esc(g.obs)}</p>`:""}
+    </div>`;
+  }).join("");
+}
+
+/* --- consulta de rota --- */
+function viewConsulta(){
+  const codsUsados = [...new Set(registros.flatMap(r=>Object.keys(r.regioes||{})))].sort();
+  const dias=["Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+  const veics=["Fiorino","VUC","3/4","Toco","Truck"];
+  let aptos = registros.filter(r=>{
+    const g=r.geral;
+    if(filtro.regiao && !(r.regioes||{})[filtro.regiao]) return false;
+    if(filtro.regiao && (g.nao_atende||[]).includes(filtro.regiao)) return false;
+    if(filtro.dia){
+      if(!(g.dias||[]).includes(filtro.dia)) return false;
+      if(r.rodizio && r.rodizio.startsWith(filtro.dia.slice(0,4))) return false;
+    }
+    if(filtro.veiculo && g.veiculo!==filtro.veiculo) return false;
+    if(filtro.risco==="aceita" && g.aceita_risco==="Não aceito") return false;
+    return true;
+  });
+  const linhas = aptos.map(r=>{
+    const d = filtro.regiao?(r.regioes[filtro.regiao]||{}):{};
+    return `<tr>
+      <td><b>${esc(r.geral.nome||r.id)}</b><br><span style="font-family:var(--mono);font-size:11px;color:var(--mute)">${esc(r.geral.placa||"")}</span></td>
+      <td>${esc(r.geral.veiculo||"")}</td>
+      <td>${esc(r.rodizio||"-")}</td>
+      <td>${esc(r.geral.janela1||"-")}</td>
+      <td>${filtro.regiao?((r.geral.regioes||{})[filtro.regiao]||"-"):Object.keys(r.regioes||{}).length+" regiões"}</td>
+      <td>${filtro.regiao?(d.acesso?d.acesso+"/5":"-"):"-"}</td>
+      <td>${filtro.regiao?(d.entregas_dia||"-"):"-"}</td>
+      <td>${r.geral.aceita_risco==="Não aceito"?'<span class="tag no">não</span>':r.geral.aceita_risco==="Sim, com condições"?'<span class="tag cond">condicional</span>':'<span class="tag ok">sim</span>'}</td>
+      <td>${esc(r.geral.fone||"")}</td></tr>`;
+  }).join("");
+
+  return `<div class="filters">
+    <select onchange="setFiltro('regiao',this.value)"><option value="">Todas as regiões</option>
+      ${codsUsados.map(c=>`<option value="${c}" ${filtro.regiao===c?'selected':''}>${regNome(c)}</option>`).join("")}</select>
+    <select onchange="setFiltro('dia',this.value)"><option value="">Qualquer dia</option>
+      ${dias.map(d=>`<option value="${d}" ${filtro.dia===d?'selected':''}>${d}</option>`).join("")}</select>
+    <select onchange="setFiltro('veiculo',this.value)"><option value="">Qualquer veículo</option>
+      ${veics.map(v=>`<option value="${v}" ${filtro.veiculo===v?'selected':''}>${v}</option>`).join("")}</select>
+    <select onchange="setFiltro('risco',this.value)"><option value="">Risco: indiferente</option>
+      <option value="aceita" ${filtro.risco==="aceita"?'selected':''}>Somente quem aceita área de risco</option></select>
+  </div>
+  <p class="stepinfo">${aptos.length} motorista(s) elegível(is). O filtro de dia já exclui quem está em rodízio.</p>
+  ${aptos.length?`<div class="panel-card" style="padding:4px 10px"><table class="data"><thead><tr>
+    <th>Motorista</th><th>Veículo</th><th>Rodízio</th><th>Carregamento</th><th>Cobertura</th><th>Acesso</th><th>Entr./dia</th><th>Risco</th><th>Contato</th>
+    </tr></thead><tbody>${linhas}</tbody></table></div>`:`<div class="empty">Nenhum motorista atende a essa combinação.</div>`}`;
+}
+window.setFiltro=(k,v)=>{filtro[k]=v;render();};
+
+/* --- fichas: cada motorista no formato do cadastro --- */
+function valorCampo(campo, src, r){
+  if(campo.id==="regioes"){
+    const m=(r.geral.regioes)||{};
+    const ks=Object.keys(m); if(!ks.length) return "";
+    return ks.map(c=>regNome(c)+" ("+m[c]+")").join(" · ");
+  }
+  if(campo.id==="nao_atende"){ const v=src[campo.id]||[]; return v.length?v.map(regNome).join(", "):""; }
+  let v=src[campo.id];
+  if(Array.isArray(v)) return v.join(", ");
+  if(v==null) return "";
+  return String(v);
+}
+function linhaFicha(rot,val){
+  if(val===""||val==null) return "";
+  return `<div class="fl"><span class="fl-k">${esc(rot)}</span><span class="fl-v">${esc(val)}</span></div>`;
+}
+function fichaHTML(r){
+  const g=r.geral||{};
+  let secoes="";
+  BLOCOS.forEach(b=>{
+    if(b.porRegiao){
+      const regs=r.regioes||{};
+      Object.keys(regs).forEach(cod=>{
+        let linhas="";
+        b.campos.forEach(c=>{ linhas+=linhaFicha(c.label, valorCampo(c, regs[cod], r)); });
+        if(linhas) secoes+=`<div class="fsec"><h4>${esc(b.titulo)} · ${esc(regNome(cod))}</h4>${linhas}</div>`;
+      });
+    }else{
+      let linhas="";
+      b.campos.forEach(c=>{ linhas+=linhaFicha(c.label, valorCampo(c, g, r)); });
+      if(linhas) secoes+=`<div class="fsec"><h4>${esc(b.titulo)}</h4>${linhas}</div>`;
+    }
+  });
+  const quando=(r.enviado_em||"").slice(0,10).split("-").reverse().join("/");
+  return `<div class="ficha-head">
+      <div><b>${esc(g.nome||r.id)}</b><span class="fh-sub">${esc(g.veiculo||"")} · placa ${esc(g.placa||"")} · rodízio ${esc(r.rodizio||"-")}</span></div>
+      <div class="fh-meta">${esc(r.id||"")}${quando?" · "+quando:""}</div>
+    </div>${secoes}`;
+}
+function viewFichas(){
+  if(!registros.length) return `<div class="empty">Nenhuma resposta recebida ainda.</div>`;
+  const cards=registros.map(r=>`<div class="panel-card ficha-card">
+      <div style="text-align:right;margin:-4px 0 6px"><button class="btn small ghost" onclick="imprimirUm('${r.id}')">Imprimir esta ficha</button></div>
+      <div class="ficha">${fichaHTML(r)}</div>
+    </div>`).join("");
+  return `<div style="margin:0 0 12px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn small" onclick="imprimirTodas()">Imprimir / PDF de todas (${registros.length})</button>
+      <button class="btn small ghost" onclick="recarregar()">Atualizar</button>
+    </div>${cards}`;
+}
+const FICHA_CSS = `
+  body{font-family:Georgia,'Times New Roman',serif;color:#15181B;margin:0;padding:24px}
+  .ficha{page-break-after:always;padding:0 0 10px}
+  .ficha:last-child{page-break-after:auto}
+  .ficha-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #15181B;padding-bottom:8px;margin-bottom:14px}
+  .ficha-head b{font-size:19px}
+  .fh-sub{display:block;font-size:12px;color:#4A535B;margin-top:2px}
+  .fh-meta{font-family:monospace;font-size:11px;color:#7C868E}
+  .fsec{margin:0 0 14px}
+  .fsec h4{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#7C868E;border-bottom:1px solid #CDD3CD;padding-bottom:4px;margin:0 0 8px}
+  .fl{display:flex;gap:10px;padding:3px 0;font-size:13.5px;line-height:1.4}
+  .fl-k{flex:0 0 42%;color:#4A535B}
+  .fl-v{flex:1;font-weight:600}
+  @media print{ body{padding:0} .brand{font-size:10px;color:#7C868E;margin-bottom:16px} }
+`;
+function abrirImpressao(regs){
+  if(!regs.length){alert("Nada para imprimir.");return;}
+  const w=window.open("","_blank");
+  if(!w){alert("O navegador bloqueou a janela de impressão. Libere pop-ups para este site.");return;}
+  const corpo=regs.map(r=>`<section class="ficha">${fichaHTML(r)}</section>`).join("");
+  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Fichas de motoristas · Ícaro Express</title><style>${FICHA_CSS}</style></head><body><p class="brand">ÍCARO EXPRESS · FILIAL SÃO PAULO · CADASTRO OPERACIONAL DE MOTORISTAS</p>${corpo}<script>window.onload=function(){setTimeout(function(){window.print();},150);};<\/script></body></html>`);
+  w.document.close();
+}
+window.imprimirTodas=()=>abrirImpressao(registros);
+window.imprimirUm=(id)=>{const r=registros.find(x=>x.id===id); abrirImpressao(r?[r]:[]);};
+
+/* --- exportar --- */
+function viewExportar(){
+  return `<div class="panel-card">
+    <p class="qt">Planilhas para consulta</p>
+    <p style="font-size:13.5px;color:var(--steel);margin:0 0 14px">
+      Três arquivos CSV, separados por ponto e vírgula, prontos para abrir no Excel em português.
+      A chave de ligação entre eles é o campo ID_MOTORISTA.</p>
+    <div class="nav" style="margin:0;flex-wrap:wrap">
+      <button class="btn small" onclick="exportar('cadastro')">Cadastro_Motorista</button>
+      <button class="btn small" onclick="exportar('cobertura')">Cobertura_Regiao</button>
+      <button class="btn small" onclick="exportar('restricoes')">Restricoes</button>
+    </div>
+  </div>
+  <div class="panel-card">
+    <p class="qt">Cópia de segurança e leitura offline</p>
+    <p style="font-size:13.5px;color:var(--steel);margin:0 0 12px">
+      Baixe todos os cadastros num único arquivo. Você pode reabrir esse arquivo em qualquer navegador,
+      sem internet, para consultar e imprimir as fichas de cada motorista.</p>
+    <div class="nav" style="margin:0;flex-wrap:wrap">
+      <button class="btn small" onclick="baixarTudoJSON()">Baixar tudo (JSON)</button>
+      <button class="btn small ghost" onclick="document.getElementById('arq').click()">Carregar arquivo</button>
+    </div>
+    <input type="file" id="arq" accept=".json,application/json" style="display:none" onchange="carregarArquivo(event)">
+  </div>
+  <div class="panel-card">
+    <p class="qt">Lançar resposta recebida por WhatsApp</p>
+    <p style="font-size:13.5px;color:var(--steel);margin:0 0 10px">
+      Cole o código enviado pelo motorista que preencheu sem conexão.</p>
+    <textarea id="imp" placeholder="Cole o código aqui"></textarea>
+    <div class="nav" style="margin-top:10px"><button class="btn small" onclick="importar()">Lançar resposta</button></div>
+  </div>`;
+}
+async function persistirRegistro(obj){
+  if(BACKEND){ try{ return await apiEnviar(obj); }catch(e){ return false; } }
+  await storageSet("resp:"+obj.id, JSON.stringify(obj)); return true;
+}
+window.importar = async ()=>{
+  const t=$("#imp").value.trim();
+  if(!t) return;
+  try{
+    const obj = JSON.parse(decodeURIComponent(escape(atob(t))));
+    if(!obj.id) throw 0;
+    const ok = await persistirRegistro(obj);
+    await carregarRegistros();
+    alert(ok?("Resposta lançada: "+(obj.geral.nome||obj.id)):"Salvo localmente, mas não consegui gravar na planilha. Confira a URL na aba Config.");
+    render();
+  }catch(e){alert("Código inválido. Peça ao motorista para reenviar o código completo.");}
+};
+window.baixarTudoJSON = ()=>{
+  if(!registros.length){alert("Nenhum cadastro carregado.");return;}
+  baixar("cadastros-motoristas-"+new Date().toISOString().slice(0,10)+".json", JSON.stringify(registros,null,2), "application/json");
+};
+window.carregarArquivo = (ev)=>{
+  const f=ev.target.files&&ev.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const dados=JSON.parse(rd.result);
+      const arr=Array.isArray(dados)?dados:[dados];
+      registros=arr.filter(x=>x&&x.geral).sort((a,b)=>(b.enviado_em||"").localeCompare(a.enviado_em||""));
+      if(!registros.length) throw 0;
+      painelTab="ficha"; render();
+      alert(registros.length+" cadastro(s) carregado(s) para consulta offline.");
+    }catch(e){ alert("Arquivo inválido. Use um arquivo gerado pelo botão Baixar tudo (JSON)."); }
+    ev.target.value="";
+  };
+  rd.readAsText(f);
+};
+
+function csv(linhas){
+  return linhas.map(l=>l.map(c=>{
+    const s=String(c==null?"":c).replace(/"/g,'""');
+    return /[";\n]/.test(s)?`"${s}"`:s;
+  }).join(";")).join("\n");
+}
+window.exportar = (qual)=>{
+  let linhas=[];
+  if(qual==="cadastro"){
+    linhas=[["ID_MOTORISTA","NOME","TELEFONE","PLACA","RODIZIO","VEICULO","CAP_M3","CAP_KG","AJUDANTE",
+      "CEP_BASE","PERNOITE_BASE","CEP_PERNOITE",
+      "INTERIOR","INTERIOR_KM","PERNOITE_FORA","DIAS","JANELA_1","JANELA_2","RESTRICAO_HORARIO",
+      "ACEITA_RISCO","CONDICOES_RISCO","OBSERVACOES","ATUALIZADO_EM"]];
+    registros.forEach(r=>{const g=r.geral;linhas.push([r.id,g.nome,g.fone,g.placa,r.rodizio,g.veiculo,g.cap_m3,g.cap_kg,g.ajudante,
+      g.cep,g.pernoite_base,g.cep_pernoite,
+      g.interior,g.interior_km,g.pernoite_fora,(g.dias||[]).join(" / "),g.janela1,g.janela2,g.restricao_horario,
+      g.aceita_risco,(g.condicoes_risco||[]).join(" / "),g.obs,(r.enviado_em||"").slice(0,10)]);});
+  }
+  if(qual==="cobertura"){
+    linhas=[["ID_MOTORISTA","NOME","COD_REGIAO","REGIAO","FREQUENCIA","DIFICULDADE_ACESSO","TIPO_VIA",
+      "TRANSBORDO","TEMPO_DESCARGA","PERFIL_CLIENTE","RESTRICAO_CIRCULACAO","ENTREGAS_DIA","KM_ULTIMA_ENTREGA"]];
+    registros.forEach(r=>Object.entries(r.regioes||{}).forEach(([cod,d])=>{
+      linhas.push([r.id,r.geral.nome,cod,regNome(cod),(r.geral.regioes||{})[cod],d.acesso,d.via,d.transbordo,
+        d.tempo_descarga,(d.perfil_cliente||[]).join(" / "),(d.restricao_mun||[]).join(" / "),d.entregas_dia,d.km_ultima]);
+    }));
+  }
+  if(qual==="restricoes"){
+    linhas=[["ID_MOTORISTA","NOME","TIPO","REGIAO_OU_LOCAL","MOTIVO"]];
+    registros.forEach(r=>{
+      (r.geral.nao_atende||[]).forEach(c=>linhas.push([r.id,r.geral.nome,"Região bloqueada",regNome(c),(r.geral.motivo_restricao||[]).join(" / ")]));
+      (r.geral.nao_atende_outros||"").split("\n").filter(x=>x.trim()).forEach(x=>
+        linhas.push([r.id,r.geral.nome,"Local específico",x.trim(),(r.geral.motivo_restricao||[]).join(" / ")]));
+      if(r.geral.aceita_risco==="Não aceito") linhas.push([r.id,r.geral.nome,"Área de risco","Todas as zonas classificadas","Recusa declarada"]);
+    });
+  }
+  baixar(qual.toUpperCase()+"_"+new Date().toISOString().slice(0,10)+".csv", csv(linhas), "text/csv");
+};
+
+/* --- config --- */
+function viewConfig(){
+  const status = BACKEND ? '<span class="tag ok">planilha conectada</span>' : '<span class="tag cond">sem planilha</span>';
+  return `<div class="panel-card">
+    <p class="qt">Planilha (Google Apps Script) ${status}</p>
+    <p style="font-size:13.5px;color:var(--steel);margin:0 0 10px">
+      Cole aqui a URL do Web App gerada no Google Apps Script. É o endereço para onde os cadastros são gravados
+      e de onde este painel lê as respostas. Deixe em branco para operar sem planilha.</p>
+    <input id="bk" type="url" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(BACKEND)}"
+      style="width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:2px;font-family:var(--mono);font-size:12.5px">
+    <div class="nav" style="margin-top:10px;flex-wrap:wrap">
+      <button class="btn small" onclick="salvarBackend()">Salvar URL</button>
+      <button class="btn small ghost" onclick="testarBackend()">Testar conexão</button>
+    </div>
+    ${statusBackend?`<p style="margin:10px 0 0;font-size:13px;color:var(--alert)">${esc(statusBackend)}</p>`:""}
+  </div>
+  <div class="panel-card">
+    <p class="qt">Lista de regiões do formulário</p>
+    <p style="font-size:13.5px;color:var(--steel);margin:0 0 10px">
+      Uma por linha, no formato <code style="font-family:var(--mono)">CODIGO|Nome|Faixa de CEP</code>.
+      Substitua pela sua lista oficial de faixas classificadas. Alterar aqui não muda respostas já enviadas.</p>
+    <textarea id="cfg" style="min-height:290px;font-family:var(--mono);font-size:12.5px">${esc(REGIOES.join("\n"))}</textarea>
+    <div class="nav" style="margin-top:10px"><button class="btn small" onclick="salvarConfig()">Salvar lista</button></div>
+  </div>`;
+}
+window.salvarBackend = async ()=>{
+  BACKEND = ($("#bk").value||"").trim();
+  await cfgSet("config:backend", BACKEND);
+  statusBackend="";
+  await carregarRegistros();
+  alert(BACKEND?"URL salva. Painel recarregado a partir da planilha.":"Operando sem planilha.");
+  render();
+};
+window.testarBackend = async ()=>{
+  const url=($("#bk").value||"").trim();
+  if(!url){alert("Cole a URL primeiro.");return;}
+  try{
+    const res=await fetch(url+(url.includes("?")?"&":"?")+"t="+Date.now());
+    const j=await res.json();
+    const n=Array.isArray(j)?j.length:(j.registros||[]).length;
+    alert("Conexão OK. A planilha respondeu com "+n+" cadastro(s).");
+  }catch(e){ alert("Não consegui conectar. Verifique se o Web App foi publicado com acesso para 'Qualquer pessoa'."); }
+};
+window.salvarConfig = async ()=>{
+  const arr = $("#cfg").value.split("\n").map(s=>s.trim()).filter(Boolean);
+  if(!arr.length){alert("A lista não pode ficar vazia.");return;}
+  REGIOES = arr;
+  await cfgSet("config:regioes", JSON.stringify(arr));
+  alert("Lista de regiões salva.");
+  render();
+};
+
+/* ---------- boot ---------- */
+(async function(){ await carregarConfig(); render(); })();
+</script>
