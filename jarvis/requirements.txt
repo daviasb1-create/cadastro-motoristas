@@ -15,4 +15,5 @@ keyring>=24                        # chaves de API no Gerenciador de Credenciais
 anthropic>=0.40                    # (opcional em uso) provedor de IA Claude
 openpyxl>=3.1                      # leitura das planilhas da roteirização e Excel da rota
 xlrd>=2.0.1                        # planilhas .xls antigas exportadas por sistemas de transporte
+mini-racer>=0.12                   # roda o código da ferramenta de roteirização (motor V8, o mesmo do Chrome)
 ormsgpack>=1.5                     # formato binário usado pela API da Fish Audio (mais rápido que JSON)
