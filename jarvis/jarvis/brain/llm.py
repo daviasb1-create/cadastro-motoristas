@@ -31,7 +31,9 @@ Regras:
 - Para agir, use somente as ferramentas disponíveis. Se nenhuma ferramenta resolver, diga isso em uma frase.
 - Ferramentas que enviam, alteram ou apagam algo pedem confirmação ao usuário automaticamente; não peça confirmação duas vezes.
 - Se o pedido estiver ambíguo, faça UMA pergunta curta em vez de adivinhar.
-- Use apenas informações fornecidas pelas ferramentas ou pelo contexto. Nunca invente e-mails, mensagens, valores ou nomes.
+- Perguntas gerais (conhecimento, explicações, cálculos, ideias): responda com seu próprio conhecimento.
+- Para fatos atuais ou que mudam (notícias, cotações, clima, trânsito, resultados, preços, horários), use a pesquisa na web quando disponível e diga a fonte em poucas palavras.
+- Sobre os dados do usuário (e-mails, mensagens, planilhas, agenda, arquivos), use apenas o que as ferramentas e o contexto trouxeram. Nunca invente e-mails, mensagens, valores ou nomes.
 - O contexto recente (último e-mail, planilha, contato, linhas encontradas) vem junto com cada pedido; use-o para entender "esse", "essa", "delas", "correspondente".
 - Latência importa: comece a resposta imediatamente."""
 
@@ -192,6 +194,16 @@ class LLMClient:
             parts.append(result.display[:3000])
         return ("OK: " if result.ok else "FALHA: ") + "\n".join(parts)
 
+    def _server_tools(self) -> list[dict]:
+        """Pesquisa na web executada pela própria Anthropic (cobrada à parte por pesquisa)."""
+        if not self.settings.get("ai.web_search", True):
+            return []
+        model = self.settings.get("ai.anthropic_model", "claude-opus-5-5")
+        # a versão com filtragem dinâmica não existe nos modelos Haiku; nesses usa a versão básica
+        kind = "web_search_20250305" if model.startswith("claude-haiku") else "web_search_20260209"
+        return [{"type": kind, "name": "web_search", "max_uses": int(self.settings.get("ai.web_search_max", 3)),
+                 "user_location": {"type": "approximate", "country": "BR", "timezone": "America/Sao_Paulo"}}]
+
     def _chat_anthropic(self, text, tools, execute_tool, max_steps) -> AgentOutcome:
         content: list[dict] = []
         for item in self._pending_tool_results:
@@ -201,12 +213,15 @@ class LLMClient:
         content.append({"type": "text", "text": text})
         self.messages.append({"role": "user", "content": content})
         outcome = AgentOutcome(text="")
+        all_tools = tools + self._server_tools()
         for _ in range(max_steps):
-            response = self._anthropic_create(system=self._system(), messages=self.messages, tools=tools)
+            response = self._anthropic_create(system=self._system(), messages=self.messages, tools=all_tools)
             self.messages.append({"role": "assistant", "content": response.content})
             if response.stop_reason == "refusal":
                 outcome.text = "Não posso ajudar com esse pedido."
                 return outcome
+            if response.stop_reason == "pause_turn":
+                continue  # a pesquisa na web ainda está em andamento no servidor; retomar sem nova mensagem
             uses = [b for b in response.content if b.type == "tool_use"]
             said = "".join(b.text for b in response.content if b.type == "text").strip()
             if not uses:

@@ -89,6 +89,18 @@ Atalhos globais (funcionam com jogo em tela cheia): `Ctrl+Alt+S` para a fala, `C
 | "silencia as notificações (por 30 minutos)" / "ativa as notificações" | Silêncio falado; tudo continua registrado |
 | "histórico de notificações" | Lista na tela |
 
+## Perguntas livres (com IA ativa)
+
+| Exemplo | Efeito |
+|---|---|
+| "Jarvis, quanto está o dólar hoje?" | Pesquisa na web e responde com a fonte |
+| "Jarvis, vai chover no Rio amanhã?" | Pesquisa na web |
+| "Jarvis, explica a diferença entre CT-e e MDF-e" | Responde com o conhecimento do Claude |
+| "Jarvis, me ajuda a escrever uma mensagem de cobrança educada" | Redige o texto (aparece na tela) |
+| "Jarvis, quanto é 15% de 3.480?" | Calcula |
+
+Sem IA configurada, essas frases recebem a resposta "Não reconheci esse comando".
+
 ## Memória
 
 | Exemplo | Efeito |

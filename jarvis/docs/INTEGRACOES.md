@@ -133,6 +133,10 @@ Custo de referência (preços de tabela, por milhão de tokens): Opus 5.5 US$ 4 
 
 O JARVIS ativa o *fallback* automático do servidor da Anthropic: se o modelo recusar um pedido por política, outro modelo tenta responder.
 
+**Perguntas gerais e pesquisa na web.** Com o Claude ativo, qualquer pergunta que não seja um comando ("Jarvis, quanto está o dólar hoje?", "quem ganhou o jogo do Flamengo?", "explica o que é ICMS-ST") vai para o Claude. Perguntas de conhecimento geral são respondidas direto; fatos atuais usam a **pesquisa na web oficial da Anthropic** (até 3 pesquisas por pergunta, localizada no Brasil), com a fonte citada na resposta. A pesquisa custa US$ 10 por 1.000 pesquisas, além dos tokens; desligue em Configurações > IA se não quiser.
+
+**Importante:** a assinatura do Claude (claude.ai Pro/Max) não inclui a API. A chave da API é uma conta separada, cobrada por uso, em console.anthropic.com.
+
 ### Ollama (local e gratuito)
 
 1. Instale em <https://ollama.com> e rode `ollama pull llama3.1` (ou outro modelo com suporte a *tools*).

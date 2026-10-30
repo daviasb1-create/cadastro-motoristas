@@ -187,3 +187,27 @@ def test_voice_loop_survives_exceptions_and_dead_mic(home):
     time.sleep(len(frames) * 0.05 + 1.5)
     pipeline.stop()
     assert got == ["que horas sao"]
+
+
+def test_general_question_uses_web_search_and_resumes_pause(home):
+    from tests_secrets import MemorySecrets
+
+    settings = Settings(home / "s.json")
+    settings.set("ai.provider", "anthropic")
+    client = LLMClient(settings, MemorySecrets())
+    client.secrets.set("anthropic_api_key", "k")
+    fake = FakeAnthropic([
+        response("pause_turn", Block(type="server_tool_use", id="s1", name="web_search", input={"query": "dólar hoje"})),
+        response("end_turn", Block(type="text", text="O dólar fechou a 5 reais, segundo o Banco Central.")),
+    ])
+    client._anthropic_create = fake
+    outcome = client.chat("quanto está o dólar hoje?", "", [{"name": "time"}], lambda *a: None)
+    assert outcome.text.startswith("O dólar fechou")
+    tools = fake.requests[0]["tools"]
+    assert tools[-1]["type"] == "web_search_20260209" and tools[-1]["user_location"]["country"] == "BR"
+    assert len(fake.requests) == 2  # retomou após pause_turn sem nova mensagem do usuário
+    assert fake.requests[1]["messages"][-1]["role"] == "assistant"
+    settings.set("ai.anthropic_model", "claude-haiku-5-5")
+    assert client._server_tools()[0]["type"] == "web_search_20250305"
+    settings.set("ai.web_search", False)
+    assert client._server_tools() == []

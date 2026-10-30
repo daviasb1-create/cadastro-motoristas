@@ -283,6 +283,8 @@ class SettingsDialog(QDialog):
         f.addRow("URL do Ollama:", self._line("ai.ollama_url"))
         f.addRow("Modelo Ollama:", self._line("ai.ollama_model", "llama3.1"))
         f.addRow("", self._check("ai.send_content", "Permitir enviar conteúdo de e-mails/mensagens à IA para resumos"))
+        f.addRow("", self._check("ai.web_search", "Claude pode pesquisar na internet (notícias, cotações, clima...)"))
+        f.addRow("Pesquisas por pergunta:", self._spin("ai.web_search_max", 1, 10))
         test = QPushButton("Testar conexão")
         test.clicked.connect(lambda: (self._save(close=False), self._busy(
             test, self.services.llm.test, lambda text: QMessageBox.information(self, "IA", f"Resposta: {text}"))))
