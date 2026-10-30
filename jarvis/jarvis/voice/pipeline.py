@@ -59,6 +59,7 @@ class VoicePipeline:
         self._last_level_pub = 0.0
         self._hangover = 0
         self._calibration: list[str] | None = None
+        self.on_calibrated: Callable[[list[str]], None] | None = None
         self.mode = "idle"
 
     # ---------------------------------------------------------------- API
@@ -297,4 +298,6 @@ class VoicePipeline:
             variants = list(dict.fromkeys((self.settings.get("wake.variants", []) or []) + sorted(words)))
             self.settings.set("wake.variants", variants)
             self.reload_wake()
+            if self.on_calibrated:
+                self.on_calibrated(sorted(words))
         return sorted(words)

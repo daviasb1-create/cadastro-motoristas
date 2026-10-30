@@ -96,6 +96,11 @@ class JarvisApp:
             s.apps.refresh_async()
         self._publish_connections()
         s.activity(f"JARVIS {__version__} iniciado", kind="system")
+        if self.enable_voice and not s.storage.kv_get("wake.calibrated"):
+            hint = ("Primeiro uso: em Configurações > Ativação, clique em 'Calibrar com a minha voz' para eu "
+                    "reconhecer melhor quando você disser Jarvis. Enquanto isso, use Ctrl+Alt+J ou o botão Falar.")
+            s.bus.publish("activity", text=hint, kind="system")
+            s.bus.publish("toast", title="JARVIS", text=hint)
 
     def _publish_connections(self) -> None:
         s = self.services
@@ -129,6 +134,7 @@ class JarvisApp:
         if self.pipeline is None:
             return
         self.services.pipeline = self.pipeline
+        self.pipeline.on_calibrated = lambda words: self.services.storage.kv_set("wake.calibrated", words)
         self.pipeline.start()
 
     def _start_inputs(self) -> None:
