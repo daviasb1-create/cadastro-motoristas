@@ -151,7 +151,9 @@ def memory_list(services, params):
     facts = services.settings.get("memory.facts", []) or []
     if not facts:
         return ActionResult("Não tenho nada guardado sobre você.")
-    return ActionResult(f"Tenho {len(facts)} informações guardadas. Estão na tela.",
+    say = ("Tenho 1 informação guardada. Está na tela." if len(facts) == 1
+           else f"Tenho {len(facts)} informações guardadas. Estão na tela.")
+    return ActionResult(say,
                         display="\n".join(f"• {f}" for f in facts))
 
 

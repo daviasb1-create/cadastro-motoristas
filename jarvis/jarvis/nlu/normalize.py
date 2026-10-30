@@ -56,3 +56,32 @@ def similar(a: str, b: str) -> float:
     if a in b:
         ratio = max(ratio, 0.85 if len(a) >= 3 else 0.5)
     return ratio
+
+
+def recover_original(raw: str, fragment: str) -> str:
+    """Devolve o trecho do texto original (com acentos e maiúsculas) que
+    corresponde a ``fragment`` normalizado. Ex.: ("Lembra de ligar pro João", "ligar pro joao")
+    -> "ligar pro João". Se não achar, retorna o próprio fragmento."""
+    if not fragment:
+        return fragment
+    raw_words = raw.split()
+    norm_words = [normalize(w) for w in raw_words]
+    target = fragment.split()
+    for start in range(len(norm_words)):
+        i, j = start, 0
+        picked: list[int] = []
+        while i < len(norm_words) and j < len(target):
+            if not norm_words[i]:
+                i += 1
+                continue
+            parts = norm_words[i].split()
+            if parts == target[j:j + len(parts)]:
+                picked.append(i)
+                j += len(parts)
+                i += 1
+            else:
+                break
+        if j == len(target) and picked:
+            text = " ".join(raw_words[picked[0]:picked[-1] + 1])
+            return text.strip(" ,.;:!?")
+    return fragment

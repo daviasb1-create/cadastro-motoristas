@@ -276,7 +276,7 @@ def open_target(services, params):
     if entry is None and services.excel is not None:
         wb = services.excel.find_workbook(target, strict=True)
         if wb:
-            return services.excel.open_workbook(wb)
+            return services.excel.open_workbook(wb, services)
     if entry is None:
         return ActionResult.fail(f"Não encontrei {target} entre os programas instalados.",
                                  display="Dica: adicione um atalho em Configurações > Comandos.")
