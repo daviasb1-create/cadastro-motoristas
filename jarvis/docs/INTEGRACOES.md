@@ -232,17 +232,15 @@ Para tocar, o app do Spotify precisa estar aberto em algum aparelho (PC, celular
 
 ## 7. Roteirização Ícaro
 
-O JARVIS usa o mesmo motor da ferramenta `roteirizacao_icaro.html` (mesmas regras de carga obrigatória, capacidade, peso que trava a Fiorino, saída única e margem de custo), lendo as planilhas de uma pasta em vez do upload no navegador.
+O JARVIS **executa o próprio código** da ferramenta `roteirizacao_icaro.html` num motor JavaScript embutido (o mesmo do Chrome): leitura das planilhas, montagem (`assign`), ajustes, Excel e PDF do Circuit são as funções da ferramenta. A ferramenta continua sendo a fonte da verdade; para mudar regras ou motoristas, atualize o HTML e troque o arquivo.
 
-1. **Configuração da filial**: o arquivo `config\rota_filial.json` (motoristas, custos, adicionais, regiões, regras de CEP e bairro, clientes prioritários, capacidades e faixas) vem no pacote e **não vai para o GitHub**. Para outra filial, copie `config\rota_filial.example.json`, preencha e salve como `rota_filial.json`.
-2. **Pasta**: na primeira vez, o JARVIS cria `Documentos\Roteirizacao Icaro` com as subpastas:
-   - `1 - Fretes chegando`, `2 - Cargas ja no Rio`, `3 - Agendamentos` (cada uma aceita várias planilhas .xlsx, .xls ou .csv);
-   - `De-para CEP (opcional)`: só se o relatório não tiver coluna de região;
-   - `Rotas geradas`: Excel (Resumo, Romaneio, Fora realocar) e romaneios para impressão.
-3. Planilhas com mais de 20 horas são ignoradas e avisadas, para não misturar o dia anterior (ajuste em **Configurações > Roteirização**).
-4. Colunas são detectadas automaticamente como na ferramenta. Se alguma não for achada, o JARVIS diz qual falta.
+1. **Ferramenta**: `referencia\roteirizacao_icaro.html` (vem no pacote; fica fora do GitHub porque tem dados da filial). Outro caminho pode ser indicado em **Configurações > Roteirização**.
+2. **Pasta**: `Documentos\Roteirizacao Icaro`, com `1 - Fretes chegando`, `2 - Cargas ja no Rio`, `3 - Agendamentos` (mesmo modelo de planilha) e `Rotas geradas` (Excel e PDFs do Circuit).
+3. Planilhas com mais de 20 horas são ignoradas e avisadas (ajustável).
+4. A rota do dia fica em `%APPDATA%\Jarvis\rota_dia.json` e volta ao abrir o JARVIS.
+5. Se o HTML mudar a ponto de o código não rodar fora do navegador, o JARVIS avisa em vez de montar uma rota diferente da ferramenta.
 
-A ferramenta HTML continua disponível ("abre a ferramenta de roteirização") para conferência visual e ajustes por clique. A cópia que vem no pacote tem a biblioteca de leitura de planilhas embutida, então funciona sem internet.
+O mapa continua na ferramenta ("abre o mapa da rota"). O token do Mapbox fica no HTML, não no JARVIS.
 
 ## 8. Porcupine (opcional)
 

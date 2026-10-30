@@ -1,52 +1,34 @@
-"""Roteirização por voz: lê as planilhas da pasta, monta a rota e responde.
+"""Roteirização por voz com o próprio código da ferramenta roteirizacao_icaro.html.
 
 Fluxo do dia:
-  1. Salve as planilhas exportadas do sistema nas subpastas de
-     "Documentos/Roteirizacao Icaro" (Fretes chegando, Cargas já no Rio, Agendamentos).
-  2. "Jarvis, monta a rota de amanhã" -> lê tudo, aplica as regras da filial,
-     salva o Excel e os romaneios em "Rotas geradas" e resume por voz.
-  3. Ajustes do dia por voz: motorista ausente, tirar/restaurar nota,
-     realocar motorista para outra região. Cada ajuste refaz a rota.
+  1. Salve os relatórios (mesmo modelo de planilha da ferramenta) nas subpastas de
+     "Documentos/Roteirizacao Icaro": Fretes chegando, Cargas já no Rio, Agendamentos.
+  2. "Jarvis, monta a rota" -> lê as planilhas, roda o assign() da ferramenta para o próximo
+     dia útil e responde o resumo.
+  3. Ajustes por voz usam as mesmas funções dos botões da ferramenta (mover nota, motorista
+     que não vai, trocar rotas, realocar região, tirar/restaurar nota).
+  4. Excel (aba "Eletros 413" primeiro) e PDFs do Circuit saem em "Rotas geradas".
 
-A configuração da filial (motoristas, custos, regiões, clientes) fica em
-rota_filial.json, na pasta de dados do JARVIS ou em config/ do programa,
-e não vai para o GitHub.
+A rota do dia fica salva e volta quando o JARVIS abre de novo (como o saveDay da ferramenta).
+O HTML fica em referencia/ (só no PC, fora do GitHub, porque tem dados da filial).
 """
 from __future__ import annotations
 
-import json
 import logging
 import re
 import threading
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 
 from ...actions.base import STR, ActionResult, ServiceUnavailable, action, props
 from ...core import paths
 from ...nlu.normalize import normalize
-from .engine import FilialConfig, Manifest, Report, RouteEngine, RouteResult, _fmt, first_name, norm
-from .export import write_excel, write_romaneios
-from .reader import FOLDERS, ensure_folders, read_depara, read_report, recent_files
+from .reader import FOLDERS, ensure_folders, recent_files
 
 log = logging.getLogger(__name__)
 
-CONFIG_NAME = "rota_filial.json"
 WEEKDAYS = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
-
-
-def config_paths() -> list[Path]:
-    return [paths.data_dir() / CONFIG_NAME, paths.project_root() / "config" / CONFIG_NAME]
-
-
-def load_filial_config() -> FilialConfig:
-    for path in config_paths():
-        if path.exists():
-            try:
-                return FilialConfig.from_dict(json.loads(path.read_text(encoding="utf-8")))
-            except (OSError, ValueError, TypeError) as exc:
-                raise ServiceUnavailable(f"O arquivo {path.name} da roteirização está com erro: {exc}") from exc
-    raise ServiceUnavailable("A roteirização ainda não tem a configuração da filial (arquivo rota_filial.json). "
-                             "Copie o arquivo que veio no pacote para a pasta config do JARVIS.")
+TOOL_NAME = "roteirizacao_icaro.html"
 
 
 def default_folder() -> Path:
@@ -56,16 +38,54 @@ def default_folder() -> Path:
     return documents / "Roteirizacao Icaro"
 
 
-def money(value: float) -> str:
-    return "R$ " + _fmt(value)
+def next_business_day(today: date | None = None) -> date:
+    """Mesma regra da ferramenta: dia seguinte, pulando sábado e domingo."""
+    d = (today or date.today()) + timedelta(days=1)
+    while d.weekday() >= 5:
+        d += timedelta(days=1)
+    return d
+
+
+def parse_day(text: str, today: date | None = None) -> date:
+    t = normalize(text or "")
+    today = today or date.today()
+    if "depois de amanha" in t:
+        return today + timedelta(days=2)
+    if re.search(r"\bhoje\b", t):
+        return today
+    if re.search(r"\bamanha\b", t):
+        return today + timedelta(days=1)
+    for i, name in enumerate(["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"]):
+        if re.search(rf"\b{name}\b", t):
+            return today + timedelta(days=(i - today.weekday()) % 7 or 7)
+    return next_business_day(today)
+
+
+def money(v: float) -> str:
+    text = f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return "R$ " + text
+
+
+def num(v: float, d: int = 0) -> str:
+    return f"{v:,.{d}f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def qty(n: int, one: str, many: str) -> str:
     return f"{n} {one if n == 1 else many}"
 
 
-def pct(value: float | None) -> str:
-    return "sem frete" if value is None else f"{round(value * 100)}%"
+def pct(v) -> str:
+    return "sem frete" if v is None else f"{round(v * 100)}%"
+
+
+def first(name: str) -> str:
+    return (name or "").split(" ")[0].capitalize()
+
+
+def short(name: str) -> str:
+    """Nome e sobrenome, sem partículas: "EDUARDO DA SILVA FRANCA" -> "Eduardo Silva"."""
+    words = [w for w in (name or "").split() if w.lower() not in ("da", "de", "do", "das", "dos", "e")]
+    return " ".join(words[:2]).title()
 
 
 class RotaService:
@@ -73,234 +93,250 @@ class RotaService:
         self.settings = settings
         self.bus = bus
         self._lock = threading.RLock()
-        self.engine: RouteEngine | None = None
-        self.result: RouteResult | None = None
-        self.data_rota: date | None = None
-        self.absent: set[str] = set()
-        self.removed: set[str] = set()
-        self.reassign: dict[str, str] = {}
+        self._engine = None
+        self.result: dict | None = None
+        self.ausentes: set[str] = set()
         self.files_used: dict[str, list[str]] = {}
         self.ignored_old: list[str] = []
         self.excel_path: Path | None = None
-        self.print_path: Path | None = None
-        self._reports: dict[str, Report] = {}
+        self.circuit_dir: Path | None = None
 
-    def publish_status(self, detail: str = "") -> None:
-        if self.bus is None:
-            return
-        if not any(p.exists() for p in config_paths()):
-            self.bus.publish("connection", service="rota", status="error", detail="Falta o arquivo rota_filial.json")
-        else:
-            self.bus.publish("connection", service="rota", status="ok",
-                             detail=detail or f"Planilhas em {self.folder}")
-
-    # ---------------------------------------------------------- pasta
+    # ----------------------------------------------------------- caminhos
     @property
     def folder(self) -> Path:
         custom = (self.settings.get("rota.folder", "") or "").strip()
         return Path(custom) if custom else default_folder()
 
+    def tool_path(self) -> Path:
+        custom = (self.settings.get("rota.tool_html", "") or "").strip()
+        return Path(custom) if custom else paths.project_root() / "referencia" / TOOL_NAME
+
+    def store_path(self) -> Path:
+        return paths.data_dir() / "rota_dia.json"
+
     def prepare_folder(self) -> Path:
         ensure_folders(self.folder)
         return self.folder
 
-    # --------------------------------------------------------- montagem
-    def _engine(self) -> RouteEngine:
-        engine = RouteEngine(load_filial_config())
-        return engine
-
-    def load(self) -> dict[str, Report]:
-        base = self.prepare_folder()
-        max_age = float(self.settings.get("rota.max_age_hours", 20) or 0)
-        reports: dict[str, Report] = {}
-        self.files_used, self.ignored_old = {}, []
-        for src in ("chegando", "no_rj", "agendado"):
-            files, old = recent_files(base / FOLDERS[src], max_age)
-            self.ignored_old += [p.name for p in old]
-            if files:
-                reports[src] = read_report(files)
-                self.files_used[src] = [p.name for p in files]
-                if not reports[src].rows:
-                    del reports[src]
-        if not reports:
-            raise ServiceUnavailable(
-                f"Não encontrei planilhas recentes na pasta {base.name}. Salve os relatórios do dia nas subpastas "
-                f"\"{FOLDERS['chegando']}\", \"{FOLDERS['no_rj']}\" ou \"{FOLDERS['agendado']}\" e peça de novo.")
-        return reports
-
-    def build(self, data_rota: date, reload: bool = True) -> RouteResult:
+    # ------------------------------------------------------------- motor
+    def engine(self):
         with self._lock:
-            if self.data_rota != data_rota:
-                self.absent, self.removed, self.reassign = set(), set(), {}
-            self.data_rota = data_rota
-            if reload or self.engine is None or not self._reports:
-                self.engine = self._engine()
-                self._reports = self.load()
-                depara_files, _ = recent_files(self.folder / FOLDERS["depara"], 0)
-                if depara_files:
-                    self.engine.set_cep_map(read_depara(depara_files[-1]))
-            engine = self.engine
-            mapping = engine.mapping_for(self._reports, self.settings.get("rota.columns", {}) or {})
-            missing = engine.missing_fields(self._reports, mapping)
-            if missing:
-                raise ServiceUnavailable("Não achei nas planilhas as colunas de " + ", ".join(missing) +
-                                         ". Confira se são os relatórios certos.")
-            self.result = engine.assign(self._reports, data_rota, mapping, self.absent, self.removed, self.reassign)
-            self._save_outputs()
-            self.publish_status(f"Rota {self.day_label(data_rota)}: {self.result.allocated} NFs")
+            if self._engine is None:
+                from .jsengine import EngineError, RotaJS
+
+                tool = self.tool_path()
+                if not tool.exists():
+                    raise ServiceUnavailable(
+                        f"Não achei a ferramenta de roteirização ({TOOL_NAME}). Coloque o arquivo na pasta referencia "
+                        "do JARVIS ou indique o caminho em Configurações > Roteirização.")
+                try:
+                    self._engine = RotaJS(tool, self.store_path())
+                except EngineError as exc:
+                    raise ServiceUnavailable(f"A ferramenta de roteirização não rodou no JARVIS: {exc}") from exc
+            return self._engine
+
+    def restore(self) -> dict | None:
+        """Rota salva do dia (como o loadDay da ferramenta ao abrir)."""
+        try:
+            result = self.engine().restore_day()
+        except ServiceUnavailable as exc:
+            log.info("Roteirização indisponível: %s", exc)
+            return None
+        if result:
+            self.result = result
+            self.ausentes = {m["nome"] for m in result["motoristas"] if not m["disponivel"]}
+        return result
+
+    def close(self) -> None:
+        with self._lock:
+            if self._engine is not None:
+                self._engine.close()
+                self._engine = None
+
+    def publish_status(self, detail: str = "") -> None:
+        if self.bus is None:
+            return
+        if not self.tool_path().exists():
+            self.bus.publish("connection", service="rota", status="error", detail=f"Falta o arquivo {TOOL_NAME}")
+        else:
+            self.bus.publish("connection", service="rota", status="ok", detail=detail or f"Planilhas em {self.folder}")
+
+    # --------------------------------------------------------- montagem
+    def build(self, data_rota: date, fds: bool = False) -> dict:
+        with self._lock:
+            engine = self.engine()
+            base = self.prepare_folder()
+            max_age = float(self.settings.get("rota.max_age_hours", 20) or 0)
+            engine.reset()
+            self.files_used, self.ignored_old = {}, []
+            for src in ("chegando", "no_rj", "agendado"):
+                files, old = recent_files(base / FOLDERS[src], max_age)
+                self.ignored_old += [p.name for p in old]
+                if files:
+                    out = engine.load(src, files)
+                    if out and out.get("ok"):
+                        self.files_used[src] = [p.name for p in files]
+            if not self.files_used:
+                raise ServiceUnavailable(
+                    f"Não encontrei planilhas recentes na pasta {base.name}. Salve os relatórios do dia em "
+                    f"\"{FOLDERS['no_rj']}\" (e, se tiver, em \"{FOLDERS['chegando']}\" e \"{FOLDERS['agendado']}\").")
+            status = engine.status()
+            if not status.get("ok"):
+                raise ServiceUnavailable(f"As planilhas não têm o que a ferramenta precisa: {status.get('msg', '')}")
+            if self.result and self.result.get("data") != data_rota.isoformat():
+                self.ausentes = set()
+            self.result = engine.assign(data_rota.isoformat(), fds, sorted(self.ausentes))
+            self.publish_status(f"Rota {self.day_label(data_rota)}: {self.allocated()} notas")
             return self.result
 
-    def rebuild(self) -> RouteResult:
-        if self.result is None or self.data_rota is None:
-            raise ServiceUnavailable("Ainda não montei a rota. Diga: monta a rota de amanhã.")
-        return self.build(self.data_rota, reload=False)
-
-    def _save_outputs(self) -> None:
-        out = self.folder / FOLDERS["saida"]
-        stamp = self.data_rota.strftime("%Y%m%d")
-        cfg_name = self.engine.config.nome or "ÍCARO EXPRESS"
-        try:
-            self.excel_path = write_excel(self.result, out / f"Rotas_Icaro_{stamp}.xlsx")
-        except PermissionError:
-            # arquivo aberto no Excel: salva com outro nome em vez de falhar
-            self.excel_path = write_excel(self.result, out / f"Rotas_Icaro_{stamp}_{datetime.now():%H%M}.xlsx")
-        self.print_path = write_romaneios(self.result, out / f"Romaneios_{stamp}.html", cfg_name)
-
-    # ------------------------------------------------------ consultas
-    def require_result(self) -> RouteResult:
+    def require(self) -> dict:
         if self.result is None:
-            raise ServiceUnavailable("Ainda não montei a rota. Diga: monta a rota de amanhã.")
+            raise ServiceUnavailable("Ainda não montei a rota. Diga: monta a rota.")
         return self.result
 
-    def find_driver(self, spoken: str) -> Manifest | None:
-        """Motorista pelo nome falado ("Marcos", "o Elias") ou pela região ("OES 3", "DCX")."""
-        result = self.require_result()
-        q = norm(spoken)
-        words = [w for w in normalize(spoken).split() if w not in ("o", "a", "do", "da", "de", "rota", "motorista")]
-        if not q:
+    def apply(self, method: str, *args) -> dict:
+        with self._lock:
+            self.require()
+            self.result = getattr(self.engine(), method)(*args)
+            return self.result
+
+    # -------------------------------------------------------- consultas
+    def allocated(self) -> int:
+        r = self.result or {}
+        return sum(len(m["notas"]) for m in r.get("manifests", []) if not m["ausente"])
+
+    def find_driver(self, spoken: str) -> dict | list[dict] | None:
+        """Motorista pelo nome falado ("Marcos", "Ronald Yuri") ou região ("OES 3"). Lista = ambíguo."""
+        result = self.require()
+        words = [w for w in normalize(spoken).split() if w not in ("o", "a", "do", "da", "de", "motorista", "rota")]
+        if not words:
             return None
-        for m in result.manifests:
-            if norm(m.driver.regiao) == q or norm(m.driver.regiao) == q.replace("rio", "", 1):
-                return m
-        for m in result.manifests:
-            tokens = normalize(m.driver.motorista).split()
-            if words and all(w in tokens for w in words):
-                return m
-        for m in result.manifests:
-            if any(norm(t) == q for t in m.driver.tokens):
-                return m
-        return None
+        key = re.sub(r"[^a-z0-9]", "", " ".join(words))
+        motoristas = result["motoristas"]
+        hits = [m for m in motoristas if all(w in normalize(m["nome"]).split() for w in words)]
+        if not hits:
+            hits = [m for m in motoristas if re.sub(r"[^a-z0-9]", "", normalize(m["regiao"])) == key]
+        if len(hits) > 1:
+            starts = [m for m in hits if normalize(m["nome"]).split()[0] == words[0]]
+            hits = starts if len(starts) == 1 else hits
+        if not hits:
+            return None
+        return hits[0] if len(hits) == 1 else hits
+
+    def driver_or_fail(self, spoken: str) -> dict:
+        found = self.find_driver(spoken)
+        if found is None:
+            raise ServiceUnavailable(f"Não achei o motorista {spoken}.")
+        if isinstance(found, list):
+            names = ", ".join(short(m["nome"]) for m in found[:4])
+            raise ServiceUnavailable(f"Tem mais de um {spoken}: {names}. Diga o nome e o sobrenome.")
+        return found
+
+    def manifest(self, idx: int) -> dict | None:
+        return next((m for m in self.require()["manifests"] if m["idx"] == idx), None)
 
     def find_region(self, spoken: str) -> str | None:
-        result = self.require_result()
-        q = norm(spoken).replace("rio", "", 1) if norm(spoken).startswith("rio") else norm(spoken)
-        for reg in result.all_regions:
-            n = norm(reg)
+        result = self.require()
+        q = re.sub(r"[^a-z0-9]", "", normalize(spoken))
+        q = q[3:] if q.startswith("rio") else q
+        for reg in result["regioes"]:
+            n = re.sub(r"[^a-z0-9]", "", normalize(reg))
             if n == q or n.replace("rio", "", 1) == q:
                 return reg
-        for reg in result.all_regions:
-            if q and q in norm(reg):
+        for reg in result["regioes"]:
+            if q and q in re.sub(r"[^a-z0-9]", "", normalize(reg)):
                 return reg
         return None
 
-    # --------------------------------------------------------- frases
+    def find_nf(self, spoken: str) -> str | None:
+        result = self.require()
+        q = re.sub(r"\D", "", spoken or "")
+        if not q:
+            return None
+        notas = [n for m in result["manifests"] for n in m["notas"]] + result["fora"]
+        exact = [n["nf"] for n in notas if re.sub(r"\D", "", n["nf"]) == q]
+        if exact:
+            return exact[0]
+        tail = [n["nf"] for n in notas if re.sub(r"\D", "", n["nf"]).endswith(q) and len(q) >= 4]
+        return tail[0] if len(tail) == 1 else None
+
+    # ----------------------------------------------------------- frases
     def day_label(self, d: date) -> str:
         today = date.today()
-        if d == today:
-            prefix = "de hoje"
-        elif d == today + timedelta(days=1):
-            prefix = "de amanhã"
-        else:
-            prefix = f"de {WEEKDAYS[d.weekday()]}"
+        prefix = ("de hoje" if d == today else "de amanhã" if d == today + timedelta(days=1)
+                  else f"de {WEEKDAYS[d.weekday()]}")
         return f"{prefix}, {d.strftime('%d/%m')}"
 
-    def summary(self, result: RouteResult) -> tuple[str, str]:
-        r = result
-        parts = [f"Rota {self.day_label(r.data_rota)} montada: {qty(r.allocated, 'nota', 'notas')} em {qty(len(r.routes_with_load), 'rota', 'rotas')}."]
-        if r.urgent_problem:
-            parts.append(f"Atenção: {qty(r.urgent_problem, 'carga obrigatória', 'cargas obrigatórias')} sem cobertura.")
-        else:
-            parts.append("Toda a carga obrigatória está coberta.")
-        if r.overflow:
-            parts.append(f"{qty(len(r.overflow), 'nota ficou', 'notas ficaram')} fora para realocar.")
-        if r.has_valor:
-            segurar = r.recommend("segurar")
+    def summary(self) -> tuple[str, str]:
+        r = self.require()
+        d = date.fromisoformat(r["data"])
+        com_carga = [m for m in r["manifests"] if m["notas"] and not m["ausente"]]
+        urgentes = [n for n in r["fora"] if n["urgente"]]
+        parts = [f"Rota {self.day_label(d)}{' (fim de semana ou feriado)' if r['fds'] else ''}: "
+                 f"{qty(self.allocated(), 'nota', 'notas')} em {qty(len(com_carga), 'rota', 'rotas')}."]
+        parts.append(f"Atenção: {qty(len(urgentes), 'obrigatória ficou', 'obrigatórias ficaram')} fora." if urgentes
+                     else "Toda a carga obrigatória saiu.")
+        if r["fora"]:
+            parts.append(f"{qty(len(r['fora']), 'nota', 'notas')} em Fora / realocar.")
+        if r["hasValor"]:
+            segurar = [m for m in com_carga if m["recomenda"] == "segurar"]
             if segurar:
-                economia = sum(m.custo for m in segurar)
-                parts.append(f"{qty(len(segurar), 'rota pode ser segurada', 'rotas podem ser seguradas')}, economia de {money(economia)}.")
-            teto = r.recommend("tetoprazo")
-            if teto:
-                parts.append(f"{qty(len(teto), 'rota', 'rotas')} acima do teto, mas com carga obrigatória.")
-        absent = [m for m in r.manifests if m.absent and m.items]
-        if absent:
-            parts.append("Ausentes com carga: " + ", ".join(first_name(m.driver.motorista) for m in absent) + ".")
+                parts.append(f"{qty(len(segurar), 'rota pode ser segurada', 'rotas podem ser seguradas')}, economia de "
+                             f"{money(sum(m['custo'] for m in segurar))}.")
+        if r["foraFilial"]:
+            parts.append(f"{qty(len(r['foraFilial']), 'nota fora da filial excluída', 'notas fora da filial excluídas')}.")
         say = " ".join(parts)
-        return say, say + "\n\n" + self.details(r)
+        return say, say + "\n\n" + self.table(com_carga)
 
-    def details(self, r: RouteResult) -> str:
-        lines = []
-        for m in sorted(r.manifests, key=lambda m: (m.driver.carreg, m.driver.seq)):
-            d = m.driver
-            status = "AUSENTE" if m.absent else ""
-            money_txt = f" · custo {pct(m.pct_custo)} ({m.band})" if m.band else ""
-            lines.append(f"C{d.carreg} {first_name(d.motorista)} ({d.regiao}): {len(m.items)} NFs, {_fmt(m.peso)} kg"
-                         f"{money_txt} {status}".rstrip())
-        iss = r.iss
-        quality = []
-        if iss.entregue:
-            quality.append(f"{iss.entregue} já entregues removidas")
-        if iss.dup:
-            quality.append(f"{iss.dup} duplicadas removidas")
-        if iss.sem_peso:
-            quality.append(f"{iss.sem_peso} sem peso")
-        if iss.sem_prazo:
-            quality.append(f"{iss.sem_prazo} sem prazo")
-        if quality:
-            lines.append("Dados: " + ", ".join(quality) + ".")
+    def table(self, manifests: list[dict]) -> str:
+        lines = ["Motorista · Região · Veículo · NFs · Peso · Volumes · Frete · Custo · % custo/frete"]
+        for m in manifests:
+            lines.append(f"{short(m['nome'])} · {m['regiao']} · {m['veiculo']} · {len(m['notas'])} · "
+                         f"{num(m['peso'], 1)} kg · {num(m['qtdVol'])} · {money(m['frete'])} · {money(m['custo'])}"
+                         f"{' (+' + m['adicional'] + ')' if m['adicional'] else ''} · {pct(m['pct'])}")
         if self.ignored_old:
             lines.append(f"Planilhas antigas ignoradas: {', '.join(self.ignored_old[:5])}")
-        if self.excel_path:
-            lines.append(f"Excel: {self.excel_path}")
         return "\n".join(lines)
 
-    def driver_text(self, m: Manifest) -> str:
-        d = m.driver
-        name = first_name(d.motorista)
-        if m.absent:
-            return f"{name} está marcado como ausente; {qty(len(m.items), 'nota', 'notas')} da {d.regiao} para realocar."
-        if not m.items:
-            return f"{name} está sem carga na rota {self.day_label(self.result.data_rota)}."
-        text = (f"{name}, {d.regiao}, carregamento {d.carreg}: {qty(len(m.items), 'nota', 'notas')}, {_fmt(m.peso)} quilos, "
-                f"{round(m.mx * 100)}% da capacidade.")
-        if m.band:
-            text += f" Custo de {pct(m.pct_custo)} do frete, faixa {m.band}."
-            if m.recomenda == "segurar":
-                text += " Pode segurar, não tem carga obrigatória."
-            elif m.recomenda == "tetoprazo":
-                text += " Acima do teto, mas tem carga obrigatória."
-        if m.addon_label:
-            text += f" Inclui adicional de {m.addon_label}."
+    def driver_text(self, m: dict) -> str:
+        name = first(m["nome"])
+        if m["ausente"]:
+            return f"{name} não vai hoje."
+        if not m["notas"]:
+            return f"{name} está sem carga."
+        text = (f"{name}, {m['regiao']}, {m['veiculo']}: {qty(len(m['notas']), 'nota', 'notas')}, {num(m['peso'])} quilos, "
+                f"{qty(int(m['qtdVol']), 'volume', 'volumes')}. Frete {money(m['frete'])}, custo {money(m['custo'])}, "
+                f"{pct(m['pct'])} do frete.")
+        if m["recomenda"] == "segurar":
+            text += " Acima do teto e sem obrigatória: pode segurar."
+        elif m["recomenda"] == "tetoprazo":
+            text += " Acima do teto, mas tem obrigatória: sai mesmo assim."
         return text
 
-    def overflow_text(self, r: RouteResult) -> tuple[str, str]:
-        if not r.overflow:
-            return "Nada ficou de fora.", "Nada ficou de fora."
-        reasons: dict[str, int] = {}
-        for n in r.overflow:
-            key = ("sem motorista fixo" if "sem motorista" in n.reason else "sem região" if n.reason == "Sem região"
-                   else "peso elevado" if n.reason.startswith("Peso elevado") else "região cheia" if n.cap
-                   else "removidas" if n.removed else "realocação" if n.realoc_fora else n.reason)
-            reasons[key] = reasons.get(key, 0) + 1
-        say = f"{qty(len(r.overflow), 'nota', 'notas')} fora: " + ", ".join(f"{v} {k}" for k, v in sorted(reasons.items(), key=lambda x: -x[1])) + "."
-        urgent = len(r.overflow_urgent)
-        if urgent:
-            say += " 1 é obrigatória." if urgent == 1 else f" {urgent} são obrigatórias."
-        regions = sorted({n.reg_label for n in r.overflow if "sem motorista" in n.reason})
-        if regions:
-            say += " Regiões sem motorista: " + ", ".join(regions[:4]) + "."
-        rows = [f"{'URGENTE ' if n.urgent else ''}NF {n.nf or '–'} · {n.cliente[:25]} · {n.bairro or n.municipio} · "
-                f"{_fmt(n.peso, 1)} kg · {n.reason}" for n in sorted(r.overflow, key=lambda n: not n.urgent)]
-        return say, say + "\n\n" + "\n".join(rows[:80])
+    # ------------------------------------------------------------ saídas
+    def save_excel(self) -> Path:
+        nome, data = self.engine().excel()
+        out = self.prepare_folder() / FOLDERS["saida"]
+        path = out / nome
+        try:
+            path.write_bytes(data)
+        except PermissionError:  # arquivo aberto no Excel
+            path = out / (path.stem + "_novo.xlsx")
+            path.write_bytes(data)
+        self.excel_path = path
+        return path
+
+    def save_circuit(self, idx: int | None = None) -> list[Path]:
+        r = self.require()
+        folder = self.prepare_folder() / FOLDERS["saida"] / f"Circuit_{r['data']}"
+        folder.mkdir(parents=True, exist_ok=True)
+        saved = []
+        for nome, _, data in self.engine().circuit(idx):
+            path = folder / nome
+            path.write_bytes(data)
+            saved.append(path)
+        self.circuit_dir = folder
+        return saved
 
 
 # ------------------------------------------------------------------ ações
@@ -311,144 +347,166 @@ def _svc(services) -> RotaService:
     return svc
 
 
-def parse_day(text: str) -> date:
-    t = normalize(text or "")
-    today = date.today()
-    if "hoje" in t:
-        return today
-    if "depois de amanha" in t:
-        return today + timedelta(days=2)
-    for i, name in enumerate(["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"]):
-        if name in t:
-            return today + timedelta(days=(i - today.weekday()) % 7 or 7)
-    if "amanha" in t:
-        return today + timedelta(days=1)
-    return today + timedelta(days=1)  # padrão da ferramenta: rota do dia seguinte
-
-
-def _rebuilt(services, svc: RotaService, prefix: str) -> ActionResult:
-    result = svc.rebuild()
-    say, display = svc.summary(result)
+def _after(services, svc: RotaService, prefix: str) -> ActionResult:
+    say, display = svc.summary()
     services.activity(prefix, kind="rota")
-    return ActionResult(prefix + " " + say, display=prefix + "\n" + display)
+    return ActionResult(prefix, display=prefix + "\n\n" + display)
 
 
-@action("rota_montar", "Monta a rota dos motoristas agregados a partir das planilhas da pasta de roteirização "
-        "(regras da Ícaro: carga obrigatória, capacidade, custo). Dia: hoje, amanhã ou dia da semana.",
-        props(day=STR))
+@action("rota_montar", "Monta a rota dos agregados com a ferramenta de roteirização da Ícaro a partir das planilhas da "
+        "pasta. Dia padrão: próximo dia útil. fds=true em fim de semana ou feriado (tira entregas para CNPJ).",
+        props(day=STR, fds={"type": "boolean"}))
 def rota_montar(services, params):
     svc = _svc(services)
     data_rota = parse_day(params.get("day", ""))
-    result = svc.build(data_rota)
-    say, display = svc.summary(result)
-    services.activity(f"Rota {svc.day_label(data_rota)} montada ({result.allocated} NFs)", kind="rota")
-    if services.settings.get("rota.open_excel_after_build", False) and services.open_url and svc.excel_path:
-        services.open_url(str(svc.excel_path))
+    fds = bool(params.get("fds")) or data_rota.weekday() >= 5
+    svc.build(data_rota, fds)
+    say, display = svc.summary()
+    services.activity(f"Rota {svc.day_label(data_rota)} montada ({svc.allocated()} notas)", kind="rota")
+    if services.settings.get("rota.open_excel_after_build", False) and services.open_url:
+        services.open_url(str(svc.save_excel()))
     return ActionResult(say, display=display)
 
 
-@action("rota_resumo", "Repete o resumo da última rota montada.")
+@action("rota_resumo", "Resumo da rota montada, com tabela por motorista (região, veículo, notas, peso, volumes, frete, custo, %).")
 def rota_resumo(services, params):
-    svc = _svc(services)
-    say, display = svc.summary(svc.require_result())
+    say, display = _svc(services).summary()
     return ActionResult(say, display=display)
 
 
-@action("rota_motorista", "Mostra a rota de um motorista (nome ou região).", props(["driver"], driver=STR))
+@action("rota_motorista", "Resumo de um motorista (nome ou região): notas, peso, volumes, frete, custo e % custo/frete.",
+        props(["driver"], driver=STR))
 def rota_motorista(services, params):
     svc = _svc(services)
-    m = svc.find_driver(params.get("driver", ""))
+    m = svc.manifest(svc.driver_or_fail(params.get("driver", ""))["idx"])
     if m is None:
-        return ActionResult.fail(f"Não achei o motorista {params.get('driver', '')} na rota.")
-    lines = [f"{n.nf or '–'} · {n.cliente[:28]} · {n.bairro or n.municipio} · CEP {n.cep} · {_fmt(n.peso, 1)} kg"
-             + (" · OBRIGATÓRIA" if svc.result.must_ship(n) else "") for n in m.items]
+        return ActionResult.fail("Esse motorista não está na rota de hoje.")
+    lines = [f"NF {n['nf']} · {(n['destinatario'] or n['cliente'])[:28]} · {n['bairro']} · {num(n['peso'], 1)} kg"
+             + (" · OBRIGATÓRIA" if n["obrigatoria"] else "") for n in m["notas"]]
     say = svc.driver_text(m)
     return ActionResult(say, display=say + ("\n\n" + "\n".join(lines) if lines else ""))
 
 
-@action("rota_fora", "Lista as notas que ficaram fora da rota (para realocar) e o motivo.")
+@action("rota_fora", "Notas em Fora / realocar, com o motivo.")
 def rota_fora(services, params):
     svc = _svc(services)
-    say, display = svc.overflow_text(svc.require_result())
-    return ActionResult(say, display=display)
+    r = svc.require()
+    if not r["fora"]:
+        return ActionResult("Nada ficou de fora.")
+    reasons: dict[str, int] = {}
+    for n in r["fora"]:
+        key = n["motivo"].split(" (")[0] or "sem motivo"
+        reasons[key] = reasons.get(key, 0) + 1
+    say = f"{qty(len(r['fora']), 'nota', 'notas')} fora: " + "; ".join(
+        f"{v} {k.lower()}" for k, v in sorted(reasons.items(), key=lambda x: -x[1])[:4]) + "."
+    urg = sum(1 for n in r["fora"] if n["urgente"])
+    if urg:
+        say += f" {qty(urg, 'é obrigatória', 'são obrigatórias')}."
+    rows = [f"{'OBRIGATÓRIA ' if n['urgente'] else ''}NF {n['nf']} · {n['bairro'] or n['municipio']} · {n['regLabel']} · {n['motivo']}"
+            for n in sorted(r["fora"], key=lambda n: not n["urgente"])]
+    return ActionResult(say, display=say + "\n\n" + "\n".join(rows[:100]))
 
 
-@action("rota_ausente", "Marca um motorista como ausente (ou presente) no dia e refaz a rota.",
+@action("rota_ausente", "Marca que um motorista não vai hoje (ou que vai) e manda as notas dele para realocar.",
         props(["driver"], driver=STR, present={"type": "boolean"}))
 def rota_ausente(services, params):
     svc = _svc(services)
-    m = svc.find_driver(params.get("driver", ""))
-    if m is None:
-        return ActionResult.fail(f"Não achei o motorista {params.get('driver', '')}.")
-    name = m.driver.motorista
-    if params.get("present"):
-        svc.absent.discard(name.upper())
-        prefix = f"{first_name(name)} de volta na rota."
-    else:
-        svc.absent.add(name.upper())
-        prefix = f"{first_name(name)} marcado como ausente."
-    return _rebuilt(services, svc, prefix)
+    d = svc.driver_or_fail(params.get("driver", ""))
+    m = svc.manifest(d["idx"])
+    want_absent = not params.get("present")
+    if m is None or bool(m["ausente"]) == want_absent:
+        return ActionResult(f"{first(d['nome'])} já está como {'ausente' if want_absent else 'presente'}.")
+    (svc.ausentes.add if want_absent else svc.ausentes.discard)(d["nome"])
+    svc.apply("toggle", d["idx"])
+    return _after(services, svc, f"{first(d['nome'])} {'não vai hoje; notas dele em Fora / realocar' if want_absent else 'de volta na rota'}.")
 
 
-@action("rota_remover_nota", "Tira uma nota fiscal da rota (vai para Fora / realocar) ou restaura.",
+@action("rota_mover_nota", "Move uma nota fiscal para outro motorista.", props(["nf", "driver"], nf=STR, driver=STR))
+def rota_mover_nota(services, params):
+    svc = _svc(services)
+    nf = svc.find_nf(params.get("nf", ""))
+    if nf is None:
+        return ActionResult.fail(f"Não achei a nota {params.get('nf', '')} na rota.")
+    d = svc.driver_or_fail(params.get("driver", ""))
+    svc.apply("move", nf, d["idx"])
+    return _after(services, svc, f"Nota {nf} com {first(d['nome'])}.")
+
+
+@action("rota_trocar", "Troca as rotas inteiras entre dois motoristas.", props(["a", "b"], a=STR, b=STR))
+def rota_trocar(services, params):
+    svc = _svc(services)
+    a, b = svc.driver_or_fail(params.get("a", "")), svc.driver_or_fail(params.get("b", ""))
+    if a["idx"] == b["idx"]:
+        return ActionResult.fail("Preciso de dois motoristas diferentes.")
+    svc.apply("swap", a["idx"], b["idx"])
+    return _after(services, svc, f"Rotas trocadas: {first(a['nome'])} e {first(b['nome'])}.")
+
+
+@action("rota_realocar", "Realoca um motorista para outra região no dia (a rota dele fica de fora). Região vazia desfaz.",
+        props(["driver"], driver=STR, region=STR))
+def rota_realocar(services, params):
+    svc = _svc(services)
+    d = svc.driver_or_fail(params.get("driver", ""))
+    spoken = (params.get("region") or "").strip()
+    region = svc.find_region(spoken) if spoken else ""
+    if spoken and not region:
+        return ActionResult.fail(f"Não achei a região {spoken} nas planilhas.")
+    svc.apply("reassign", d["idx"], region)
+    return _after(services, svc, f"{first(d['nome'])} realocado para {region}." if region
+                  else f"{first(d['nome'])} voltou para a rota dele.")
+
+
+@action("rota_remover_nota", "Tira uma nota da rota (vai para Fora / realocar) ou restaura.",
         props(["nf"], nf=STR, restore={"type": "boolean"}))
 def rota_remover_nota(services, params):
     svc = _svc(services)
-    result = svc.require_result()
-    nf = re.sub(r"\D", "", str(params.get("nf", "")))
-    known = {n.nf for m in result.manifests for n in m.items} | {n.nf for n in result.overflow}
-    match = next((k for k in known if re.sub(r"\D", "", k) == nf), None)
-    if not nf or match is None:
-        return ActionResult.fail(f"Não achei a nota {nf or ''} nas planilhas.")
+    nf = svc.find_nf(params.get("nf", ""))
+    if nf is None:
+        return ActionResult.fail(f"Não achei a nota {params.get('nf', '')} na rota.")
     if params.get("restore"):
-        svc.removed.discard(match)
-        return _rebuilt(services, svc, f"Nota {match} restaurada.")
-    svc.removed.add(match)
-    return _rebuilt(services, svc, f"Nota {match} retirada da rota.")
+        svc.apply("restore", nf)
+        return _after(services, svc, f"Nota {nf} restaurada.")
+    svc.apply("remove", nf)
+    return _after(services, svc, f"Nota {nf} retirada da rota.")
 
 
-@action("rota_realocar", "Realoca um motorista para atender outra região no dia (a rota original dele fica de fora). "
-        "Região vazia desfaz a realocação.", props(["driver"], driver=STR, region=STR))
-def rota_realocar(services, params):
+@action("rota_excel", "Gera o Excel da rota (igual ao da ferramenta, aba Eletros 413 primeiro) e abre.")
+def rota_excel(services, params):
     svc = _svc(services)
-    m = svc.find_driver(params.get("driver", ""))
-    if m is None:
-        return ActionResult.fail(f"Não achei o motorista {params.get('driver', '')}.")
-    name = m.driver.motorista
-    spoken = (params.get("region") or "").strip()
-    if not spoken:
-        svc.reassign.pop(name, None)
-        return _rebuilt(services, svc, f"{first_name(name)} voltou para a rota dele.")
-    region = svc.find_region(spoken)
-    if region is None:
-        return ActionResult.fail(f"Não achei a região {spoken} nas planilhas de hoje.")
-    svc.reassign[name] = region
-    return _rebuilt(services, svc, f"{first_name(name)} realocado para {region}.")
+    svc.require()
+    path = svc.save_excel()
+    if services.open_url:
+        services.open_url(str(path))
+    return ActionResult("Excel da rota gerado.", display=f"Excel: {path}")
 
 
-@action("rota_abrir", "Abre a planilha da rota, os romaneios para impressão, a pasta de planilhas ou a ferramenta "
-        "de roteirização no navegador.", props(["what"], what={"type": "string", "enum": ["excel", "romaneio", "pasta", "ferramenta"]}))
+@action("rota_circuit", "Gera os PDFs do Circuit (um por motorista, ou só do motorista pedido) e abre a pasta.",
+        props(driver=STR))
+def rota_circuit(services, params):
+    svc = _svc(services)
+    svc.require()
+    spoken = (params.get("driver") or "").strip()
+    idx = svc.driver_or_fail(spoken)["idx"] if spoken else None
+    saved = svc.save_circuit(idx)
+    if not saved:
+        return ActionResult.fail("Nenhuma rota com carga para gerar o Circuit.")
+    if services.open_url:
+        services.open_url(str(svc.circuit_dir))
+    return ActionResult(f"{qty(len(saved), 'PDF do Circuit gerado', 'PDFs do Circuit gerados')}.",
+                        display="\n".join(str(p) for p in saved))
+
+
+@action("rota_abrir", "Abre a pasta das planilhas ou a ferramenta de roteirização (com o mapa) no navegador.",
+        props(["what"], what={"type": "string", "enum": ["pasta", "ferramenta"]}))
 def rota_abrir(services, params):
     svc = _svc(services)
-    what = params.get("what", "excel")
     if services.open_url is None:
         return ActionResult.fail("Não consigo abrir arquivos aqui.")
-    if what == "pasta":
-        services.open_url(str(svc.prepare_folder()))
-        return ActionResult("Abrindo a pasta da roteirização.")
-    if what == "ferramenta":
-        tool = (services.settings.get("rota.tool_html", "") or "").strip()
-        candidates = [Path(tool)] if tool else []
-        candidates.append(paths.project_root() / "ferramentas" / "roteirizacao_icaro.html")
-        for path in candidates:
-            if path.exists():
-                services.open_url(str(path))
-                return ActionResult("Abrindo a ferramenta de roteirização.")
-        return ActionResult.fail("Não achei o arquivo da ferramenta. Indique o caminho em Configurações > Roteirização.")
-    svc.require_result()
-    path = svc.excel_path if what == "excel" else svc.print_path
-    if not path or not path.exists():
-        return ActionResult.fail("O arquivo da rota não foi encontrado. Monte a rota de novo.")
-    services.open_url(str(path))
-    return ActionResult("Abrindo a planilha da rota." if what == "excel" else "Abrindo os romaneios para impressão.")
-
+    if params.get("what") == "ferramenta":
+        tool = svc.tool_path()
+        if not tool.exists():
+            return ActionResult.fail(f"Não achei o arquivo {TOOL_NAME}.")
+        services.open_url(str(tool))
+        return ActionResult("Abrindo a ferramenta de roteirização.")
+    services.open_url(str(svc.prepare_folder()))
+    return ActionResult("Abrindo a pasta da roteirização.")

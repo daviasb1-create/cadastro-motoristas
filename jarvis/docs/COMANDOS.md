@@ -50,18 +50,24 @@ Atalhos globais (funcionam com jogo em tela cheia): `Ctrl+Alt+S` para a fala, `C
 
 ## Roteirização (motoristas agregados)
 
-Antes: salve os relatórios do dia nas subpastas de `Documentos\Roteirizacao Icaro`.
+Usa o próprio código da ferramenta `roteirizacao_icaro.html` (pasta `referencia`). Antes: salve os relatórios do dia (mesmo modelo que você sobe na ferramenta) em `Documentos\Roteirizacao Icaro\2 - Cargas ja no Rio` (e, se tiver, em `1 - Fretes chegando` e `3 - Agendamentos`).
 
 | Exemplo | Efeito |
 |---|---|
-| "monta a rota de amanhã" / "faz a roteirização de hoje" / "monta a rota de segunda" | Lê as planilhas, distribui por motorista, salva Excel e romaneios e resume por voz |
-| "como ficou a rota" | Repete o resumo (obrigatórias sem cobertura, notas fora, rotas que podem segurar) |
-| "rota do Marcos" / "rota da OES 3" | Notas, peso, capacidade, custo e faixa do motorista |
-| "o que ficou fora da rota" | Notas para realocar, com motivo |
-| "o Elias faltou" / "o Elias voltou" | Marca ausência ou presença no dia e refaz a rota |
-| "tira a nota 12345" / "restaura a nota 12345" | Retira ou devolve uma nota e refaz a rota |
-| "realoca o Elias para OES 6" / "desfaz a realocação do Elias" | Troca a região do motorista no dia |
-| "abre a planilha da rota" / "imprime os romaneios" / "abre a pasta da rota" / "abre a ferramenta de roteirização" | Abre os arquivos |
+| "monta a rota" | Rota do próximo dia útil, com resumo e tabela por motorista |
+| "monta a rota de amanhã, é feriado" | Dia de feriado/fim de semana: tira entregas para CNPJ, como na ferramenta |
+| "rota do Lucas" / "rota da OES 3" | Região, veículo, notas, peso, volumes, frete, custo e % custo/frete |
+| "como ficou a rota" / "o que ficou fora da rota" | Resumo e lista de Fora / realocar com motivo |
+| "o Ronald não vai hoje" / "o Ronald vai sim" | Motorista fora ou de volta (as notas vão para realocar) |
+| "move a nota 1234 para o Deusereis" | Move uma nota (basta o final do número, se for único) |
+| "troca a rota do Marcos com a do Ronald" | Troca as rotas inteiras |
+| "realoca o Jeferson para OES 1" / "desfaz a realocação do Jeferson" | Motorista atende outra região no dia |
+| "tira a nota 1234" / "restaura a nota 1234" | Retira ou devolve uma nota |
+| "gera o Excel da rota" | Excel igual ao da ferramenta ("Eletros 413" na primeira aba) |
+| "gera os PDFs do Circuit" / "gera o Circuit do Lucas" | Um PDF por motorista, para importar no Circuit |
+| "abre o mapa da rota" / "abre a pasta da rota" | Abre a ferramenta (com o mapa) ou a pasta |
+
+A rota montada fica salva e volta quando o JARVIS abre.
 
 ## Outlook (desligado por padrão)
 

@@ -109,7 +109,7 @@ class RotaJS:
                 raise EngineError(f"falha no código da ferramenta ({fn}): {exc}") from exc
             if save:
                 self._save_store()
-            return json.loads(raw) if raw not in (None, "undefined") else None
+            return json.loads(raw) if isinstance(raw, str) else None  # função sem retorno
 
     def logs(self) -> list[str]:
         return json.loads(self.ctx.eval("JSON.stringify(__LOGS.splice(0))"))

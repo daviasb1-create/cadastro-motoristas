@@ -116,6 +116,7 @@ class JarvisApp:
         s = self.services
         s.extras["spotify"].publish_status()
         s.extras["rota"].publish_status()
+        threading.Thread(target=self._restore_rota, name="rota-restore", daemon=True).start()
         provider = s.settings.get("ai.provider", "none")
         if provider == "none":
             s.bus.publish("connection", service="ai", status="off", detail="Somente comandos locais")
@@ -129,6 +130,15 @@ class JarvisApp:
                 s.bus.publish("connection", service=service, status="off", detail="Não configurado")
         else:
             threading.Thread(target=self._check_microsoft, daemon=True).start()
+
+    def _restore_rota(self) -> None:
+        """Rota montada salva volta ao abrir (como na ferramenta)."""
+        from datetime import date
+
+        rota = self.services.extras["rota"]
+        if rota.restore():
+            self.services.activity(f"Rota {rota.day_label(date.fromisoformat(rota.result['data']))} "
+                                   f"restaurada ({rota.allocated()} notas)", kind="rota")
 
     def _check_microsoft(self) -> None:
         name = self.services.graph.account_name()
@@ -326,6 +336,7 @@ class JarvisApp:
         for stopper in (lambda: self.pipeline and self.pipeline.stop(), self.hotkeys.stop, self.gamepad.stop,
                         self.gamemode.stop, s.reminders.stop, s.whatsapp.stop, s.outlook.stop, s.excel.stop,
                         lambda: s.extras.get("music") and s.extras["music"].stop(fade=False),
+                        lambda: s.extras.get("rota") and s.extras["rota"].close(),
                         lambda: self.speaker and self.speaker.shutdown()):
             try:
                 stopper()

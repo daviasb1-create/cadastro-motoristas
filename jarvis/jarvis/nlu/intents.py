@@ -547,48 +547,57 @@ def _greeting_rule(text: str) -> Intent | None:
     return None
 
 
-ROTA_WORD = r"(?:rota|rotas|roteirizacao|roteirizar|roteiriza|romaneio|romaneios)"
+ROTA_WORD = r"(?:rota|rotas|roteirizacao|roteirizar|roteiriza|circuit|circuito)"
+NAME = r"[a-z]+(?: [a-z]+)?"
+NOT_DRIVER = ("musica", "volume", "som", "janela", "isso", "tudo", "internet", "ele", "ela")
 
 
 def _rota_rule(text: str) -> Intent | None:
-    """Roteirização dos motoristas agregados (planilhas da pasta de roteirização)."""
+    """Roteirização dos agregados (motor da ferramenta roteirizacao_icaro.html)."""
     t = words_to_digits(text)
+    m = re.search(rf"\b(?:move|mova|mover|passa|passe|manda|mande|coloca|coloque|bota|joga|transfere|transfira)\s+(?:a\s+)?(?:nota|nf|nota fiscal)\s+(?:numero\s+)?(?P<nf>\d[\d ]*?)\s+(?:para|pra|pro|no|na)\s+(?:o\s+|a\s+)?(?P<d>{NAME})$", t)
+    if m:
+        return Intent("rota_mover_nota", {"nf": m.group("nf").replace(" ", ""), "driver": m.group("d")})
     m = re.search(r"\b(?:tira|tire|tirar|remove|remova|remover|exclui|retira|retire)\s+(?:a\s+)?(?:nota|nf|nota fiscal)\s+(?:numero\s+)?(\d[\d ]*)", t)
     if m:
         return Intent("rota_remover_nota", {"nf": m.group(1).replace(" ", "")})
     m = re.search(r"\b(?:restaura|restaure|devolve|volta|recoloca|coloca de volta)\s+(?:a\s+)?(?:nota|nf|nota fiscal)\s+(?:numero\s+)?(\d[\d ]*)", t)
     if m:
         return Intent("rota_remover_nota", {"nf": m.group(1).replace(" ", ""), "restore": True})
-    m = re.search(r"\b(?:realoca|realocar|realoque|manda|coloca|bota|passa)\s+(?:o\s+|a\s+)?(?P<d>[a-z]+(?: [a-z]+)?)\s+(?:para|pra|na|no)\s+(?:a\s+|o\s+|rota\s+|regiao\s+)*(?P<r>[a-z]{2,6}\s?\d?)$", t) \
+    m = re.search(rf"\b(?:troca|troque|trocar|inverte|inverta)\s+(?:a\s+)?(?:rota\s+)?(?:do|da)\s+(?P<a>{NAME})\s+(?:com|pela|pelo)\s+(?:a\s+)?(?:rota\s+)?(?:do|da|o|a)?\s*(?P<b>{NAME})$", t)
+    if m:
+        return Intent("rota_trocar", {"a": m.group("a"), "b": m.group("b")})
+    m = re.search(rf"\b(?:realoca|realocar|realoque|manda|coloca|bota|passa)\s+(?:o\s+|a\s+)?(?P<d>{NAME})\s+(?:para|pra|na|no)\s+(?:a\s+|o\s+|rota\s+|regiao\s+)*(?P<r>[a-z]{{2,6}}\s?\d?)$", t) \
         or re.search(r"^(?:o\s+|a\s+)?(?P<d>[a-z]+)\s+vai (?:fazer|cobrir|rodar|atender)\s+(?:a\s+|o\s+|rota\s+|regiao\s+)*(?P<r>[a-z]{2,6}\s?\d?)$", t)
-    if m and m.group("d") not in ("musica", "volume", "som", "janela", "isso", "tudo"):
+    if m and m.group("d") not in NOT_DRIVER:
         return Intent("rota_realocar", {"driver": m.group("d"), "region": m.group("r").strip()})
     m = re.search(r"\b(?:desfaz|desfazer|cancela|cancelar|tira)\s+(?:a\s+)?realocacao\s+(?:do|da)\s+(?P<d>[a-z]+)", t)
     if m:
         return Intent("rota_realocar", {"driver": m.group("d"), "region": ""})
-    m = re.search(r"^(?:o\s+|a\s+)?(?P<d>[a-z]+)\s+(?:faltou|nao vem|nao veio|nao vai vir|esta ausente|ta ausente|de folga|esta de folga|ta de folga)\b", t) \
+    m = re.search(rf"^(?:o\s+|a\s+)?(?P<d>{NAME})\s+(?:nao vai|faltou|nao vem|nao veio|nao vai vir|esta ausente|ta ausente|de folga|esta de folga|ta de folga)\b", t) \
         or re.search(r"\bmarca\s+(?:o\s+|a\s+)?(?P<d>[a-z]+)\s+como ausente\b", t)
-    if m:
+    if m and m.group("d") not in NOT_DRIVER:
         return Intent("rota_ausente", {"driver": m.group("d")})
-    m = re.search(r"^(?:o\s+|a\s+)?(?P<d>[a-z]+)\s+(?:voltou|veio|vai vir|chegou|esta presente|ta presente)$", t) \
+    m = re.search(rf"^(?:o\s+|a\s+)?(?P<d>{NAME})\s+(?:voltou|veio|vai sim|vai hoje|vai vir|chegou|esta presente|ta presente)$", t) \
         or re.search(r"\bmarca\s+(?:o\s+|a\s+)?(?P<d>[a-z]+)\s+como presente\b", t)
-    if m and m.group("d") not in ("musica", "som", "internet"):
+    if m and m.group("d") not in NOT_DRIVER:
         return Intent("rota_ausente", {"driver": m.group("d"), "present": True})
     if not re.search(rf"\b{ROTA_WORD}\b", t):
         return None
-    if re.search(r"\b(imprime|imprimir|imprima|abre|abra|mostra)\b.*\bromaneios?\b", t):
-        return Intent("rota_abrir", {"what": "romaneio"})
-    if re.search(r"\b(abre|abra|abrir|mostra)\b.*\b(planilha|excel)\b", t):
-        return Intent("rota_abrir", {"what": "excel"})
+    if re.search(r"\b(circuit|circuito)\b", t):
+        m = re.search(rf"\b(?:do|da)\s+(?P<d>{NAME})$", t)
+        return Intent("rota_circuit", {"driver": m.group("d") if m and m.group("d") not in ("rota", "circuit") else ""})
+    if re.search(r"\b(planilha|excel)\b", t):
+        return Intent("rota_excel")
     if re.search(r"\b(abre|abra|abrir)\b.*\bpasta\b", t):
         return Intent("rota_abrir", {"what": "pasta"})
-    if re.search(r"\b(abre|abra|abrir)\b.*\b(ferramenta|site|pagina|roteirizacao)\b", t):
+    if re.search(r"\b(abre|abra|abrir|mostra)\b.*\b(ferramenta|site|pagina|mapa)\b", t):
         return Intent("rota_abrir", {"what": "ferramenta"})
     if re.search(r"\b(fora|de fora|realocar|sobrou|sobraram|nao coube|nao couberam)\b", t):
         return Intent("rota_fora")
     if re.search(r"\b(monta|monte|montar|faz|faca|fazer|gera|gere|gerar|cria|crie|roda|rode|refaz|refaca|roteiriza|roteirizar)\b", t):
-        return Intent("rota_montar", {"day": t})
-    m = re.search(rf"\b{ROTA_WORD}\s+(?:do|da)\s+(?P<d>[a-z]+(?: \d)?)$", t)
+        return Intent("rota_montar", {"day": t, "fds": bool(re.search(r"\b(feriado|fim de semana|final de semana)\b", t))})
+    m = re.search(rf"\b(?:rota|resumo)\s+(?:do|da)\s+(?P<d>{NAME})$", t)
     if m:
         return Intent("rota_motorista", {"driver": m.group("d")})
     if re.search(r"\b(resumo|como ficou|como esta|como ta)\b", t):

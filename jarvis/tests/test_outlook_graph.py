@@ -248,3 +248,12 @@ def test_outlook_off_answers_clearly(services):
     services.settings.set("outlook.enabled", False)
     result = REGISTRY.run(services, "email_unread", {})
     assert not result.ok and "Outlook está desligado" in result.say
+
+
+def test_outlook_disabled_by_default(services):
+    from jarvis.integrations.msgraph.auth import GraphAuth
+
+    auth = GraphAuth(services.settings)
+    assert "Mail.ReadWrite" not in auth.scopes and "Files.ReadWrite.All" in auth.scopes
+    services.settings.set("outlook.enabled", True)
+    assert "Mail.ReadWrite" in auth.scopes

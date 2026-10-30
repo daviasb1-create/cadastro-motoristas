@@ -9,7 +9,7 @@ Assistente de voz em português do Brasil que fica em segundo plano, atende ao c
 | Conversa livre | IA opcional e configurável: Claude (Anthropic API) ou Ollama (local e gratuito). |
 | Responde falando | Voz do JARVIS pela **Fish Audio** (voz escolhida, streaming), perfil **FRIDAY** feminino; reservas automáticas (neural Microsoft e vozes do Windows). |
 | Controla o Windows | Abre/fecha programas e jogos (Menu Iniciar, Microsoft Store, Steam), pastas, janelas, volume, lembretes, arquivos. |
-| Roteirização | "Jarvis, monta a rota de amanhã": lê as planilhas da pasta, distribui as notas pelos agregados com as regras da Ícaro, gera Excel e romaneios e responde por voz (ausências, notas fora, realocação). |
+| Roteirização | "Jarvis, monta a rota": roda o próprio código da ferramenta de roteirização da Ícaro, responde por motorista (notas, peso, frete, custo), aceita ajustes por voz e gera o Excel e os PDFs do Circuit. |
 | Outlook (desligado por padrão) | Não lidos, resumos, pesquisa, anexos, responder, encaminhar, arquivar, apagar, marcar como lido; criar, remarcar e cancelar compromissos. Tudo que envia ou apaga pede confirmação. |
 | Excel Online | Descobre planilhas, pendências, atrasados, busca, resumos, inconsistências; edição só com prévia, confirmação e auditoria. |
 | WhatsApp Business | Lê as notificações do Windows (remetente e prévia), resume, abre conversas, prepara mensagens; nunca envia sozinho. |
@@ -56,4 +56,4 @@ O microfone é processado no seu PC; só depois de chamado o comando vira texto,
 ```bat
 run_tests.bat
 ```
-180 testes automatizados cobrem interpretação de comandos, roteirização, confirmações, Excel, Outlook/Graph, WhatsApp, notificações, ciclo de voz, IA e interface.
+175 testes automatizados cobrem interpretação de comandos, roteirização, confirmações, Excel, Outlook/Graph, WhatsApp, notificações, ciclo de voz, IA e interface.

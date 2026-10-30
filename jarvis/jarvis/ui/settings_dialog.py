@@ -367,7 +367,7 @@ class SettingsDialog(QDialog):
     # ------------------------------------------------------- roteirização
     def _tab_rota(self) -> QWidget:
         from ..integrations.rota.reader import FOLDERS
-        from ..integrations.rota.service import config_paths, default_folder
+        from ..integrations.rota.service import TOOL_NAME, default_folder
 
         w, f = self._form()
         row = QHBoxLayout()
@@ -383,25 +383,30 @@ class SettingsDialog(QDialog):
         holder.setLayout(row)
         f.addRow("Pasta das planilhas:", holder)
         f.addRow("Ignorar planilhas com mais de (h):", self._spin("rota.max_age_hours", 0, 240))
-        f.addRow("", self._check("rota.open_excel_after_build", "Abrir o Excel da rota depois de montar"))
-        f.addRow("Ferramenta (HTML):", self._line("rota.tool_html", "vazio = ferramentas\\roteirizacao_icaro.html"))
-        found = next((p for p in config_paths() if p.exists()), None)
-        f.addRow("Configuração da filial:", QLabel(str(found) if found else "não encontrada (rota_filial.json)"))
+        f.addRow("", self._check("rota.open_excel_after_build", "Gerar e abrir o Excel depois de montar"))
+        rota = self.services.extras.get("rota")
+        tool = rota.tool_path() if rota else None
+        f.addRow("Ferramenta (HTML):", self._line("rota.tool_html", f"vazio = referencia\\{TOOL_NAME}"))
+        f.addRow("Situação:", QLabel("ferramenta encontrada" if tool and tool.exists() else f"{TOOL_NAME} não encontrado"))
         buttons = QHBoxLayout()
-        for label, day in (("Montar rota de amanhã", "amanha"), ("Montar rota de hoje", "hoje")):
+        for label, name, params in (("Montar rota (próximo dia útil)", "rota_montar", {}), ("Gerar Excel", "rota_excel", {}),
+                                    ("PDFs do Circuit", "rota_circuit", {}), ("Abrir mapa", "rota_abrir", {"what": "ferramenta"})):
             b = QPushButton(label)
-            b.setObjectName("accent" if day == "amanha" else "")
-            b.clicked.connect(lambda _=False, d=day: (self._save(close=False), self.app.run_action("rota_montar", {"day": d})))
+            if name == "rota_montar":
+                b.setObjectName("accent")
+            b.clicked.connect(lambda _=False, n=name, p=params: (self._save(close=False), self.app.run_action(n, p)))
             buttons.addWidget(b)
         box = QWidget()
         box.setLayout(buttons)
         f.addRow("", box)
         f.addRow("", self._note(
-            f"Salve os relatórios do dia nas subpastas \"{FOLDERS['chegando']}\", \"{FOLDERS['no_rj']}\" e "
-            f"\"{FOLDERS['agendado']}\" (o JARVIS cria as pastas). O Excel e os romaneios ficam em \"{FOLDERS['saida']}\". "
-            "Comandos: \"monta a rota de amanhã\", \"como ficou a rota\", \"rota do Marcos\", \"o que ficou fora\", "
-            "\"o Elias faltou\", \"tira a nota 12345\", \"realoca o Elias para OES 6\", \"imprime os romaneios\", "
-            "\"abre a planilha da rota\". Motoristas, custos e regras da filial ficam em rota_filial.json (só no seu PC)."))
+            f"Salve os relatórios do dia (mesmo modelo que você sobe na ferramenta) em \"{FOLDERS['no_rj']}\" e, se tiver, "
+            f"em \"{FOLDERS['chegando']}\" e \"{FOLDERS['agendado']}\". Excel e PDFs do Circuit saem em \"{FOLDERS['saida']}\". "
+            "O JARVIS usa o próprio código da ferramenta: para atualizar as regras ou os motoristas, troque o arquivo HTML. "
+            "Comandos: \"monta a rota\", \"monta a rota de amanhã, é feriado\", \"rota do Lucas\", \"o que ficou fora\", "
+            "\"o Ronald não vai hoje\", \"move a nota 1234 para o Deusereis\", \"troca a rota do Marcos com a do Ronald\", "
+            "\"realoca o Jeferson para OES 1\", \"tira a nota 1234\", \"gera o Excel da rota\", \"gera os PDFs do Circuit\", "
+            "\"abre o mapa da rota\"."))
         return w
 
     def _pick_dir(self, edit: QLineEdit) -> None:

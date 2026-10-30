@@ -83,7 +83,7 @@ jarvis/
 │   ├── gaming/                modo jogo, atalhos globais, controle Xbox
 │   ├── platform/              APIs nativas do Windows, atalhos .lnk, Steam
 │   └── ui/                    janela, núcleo animado, bandeja, configurações
-├── tests/                     180 testes automatizados (pytest)
+├── tests/                     175 testes automatizados (pytest)
 ├── scripts/                   instalação, modelo de voz, ícone, executável
 ├── installer/                 instalador Inno Setup
 ├── config/                    exemplo de configuração sem segredos
