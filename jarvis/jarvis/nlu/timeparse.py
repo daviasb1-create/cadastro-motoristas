@@ -18,7 +18,7 @@ _REL = re.compile(
 )
 _ABS = re.compile(
     r"\b(?:as|a|para as|pras|pra)\s+(?P<h>\d{1,2})(?:(?::|h|\s+e\s+|\s+horas\s+e\s+)(?P<m>\d{1,2}|meia))?"
-    r"(?:\s*horas?)?(?:\s+(?P<period>da manha|da tarde|da noite|da madrugada))?\b"
+    r"(?:\s*(?:horas?|hs|h))?(?:\s+(?P<period>da manha|da tarde|da noite|da madrugada))?\b"
 )
 _NOON = re.compile(r"\b(?:ao|as|a)\s+(?P<which>meio dia|meia noite)(?:\s+e\s+(?P<m>\d{1,2}|meia))?\b")
 
@@ -28,6 +28,13 @@ def parse_when(text: str, now: datetime | None = None) -> tuple[datetime | None,
     now = now or datetime.now()
     text = words_to_digits(text)
     tomorrow = bool(re.search(r"\bamanha\b", text))
+    day_offset = 1 if tomorrow else 0
+    wd = _WEEKDAY.search(text)
+    if wd:
+        target = WEEKDAYS[wd.group(1)]
+        day_offset = (target - now.weekday()) % 7 or 7  # "sexta" = próxima sexta (nunca hoje)
+        text = (text[:wd.start()] + " " + text[wd.end():]).strip()
+        tomorrow = True
 
     match = _REL.search(text)
     if match:
@@ -55,7 +62,9 @@ def parse_when(text: str, now: datetime | None = None) -> tuple[datetime | None,
         hour = 12 if match.group("which") == "meio dia" else 0
         minute = _minute(match.group("m"))
         due = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        if tomorrow or due <= now:
+        if tomorrow:
+            due += timedelta(days=day_offset)
+        elif due <= now:
             due += timedelta(days=1)
         return due, _cleanup(text, match.span())
 
@@ -70,7 +79,7 @@ def parse_when(text: str, now: datetime | None = None) -> tuple[datetime | None,
             hour += 12
         due = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
         if tomorrow:
-            due += timedelta(days=1)
+            due += timedelta(days=day_offset)
         elif due <= now:
             if not period and hour < 12 and due + timedelta(hours=12) > now:
                 due += timedelta(hours=12)
@@ -79,6 +88,16 @@ def parse_when(text: str, now: datetime | None = None) -> tuple[datetime | None,
         return due, _cleanup(text, match.span())
 
     return None, text
+
+
+WEEKDAYS = {"segunda": 0, "terca": 1, "quarta": 2, "quinta": 3, "sexta": 4, "sabado": 5, "domingo": 6}
+_WEEKDAY = re.compile(r"\b(?:na |no |nesta |neste |proxima |proximo )?(segunda|terca|quarta|quinta|sexta|sabado|domingo)(?: feira)?\b")
+
+
+def day_hint(text: str) -> str:
+    """Trecho de dia citado sem horário ("sexta", "amanha"), para completar depois."""
+    match = _WEEKDAY.search(text) or re.search(r"\bamanha\b", text)
+    return match.group(0) if match else ""
 
 
 def _minute(value: str | None) -> int:

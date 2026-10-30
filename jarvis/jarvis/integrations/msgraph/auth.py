@@ -23,7 +23,7 @@ FEATURE_SCOPES = {
     "base": ["User.Read"],
     "mail": ["Mail.ReadWrite"],  # leitura + criação de rascunhos (não envia)
     "send_mail": ["Mail.Send"],
-    "calendar": ["Calendars.Read"],
+    "calendar": ["Calendars.ReadWrite"],  # ler e criar/remarcar compromissos
     "excel": ["Files.ReadWrite.All"],  # planilhas próprias e compartilhadas com você
 }
 

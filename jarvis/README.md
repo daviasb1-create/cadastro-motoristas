@@ -9,11 +9,11 @@ Assistente de voz em português do Brasil que fica em segundo plano, atende ao c
 | Conversa livre | IA opcional e configurável: Claude (Anthropic API) ou Ollama (local e gratuito). |
 | Responde falando | Perfis **JARVIS** (masculino) e **FRIDAY** (feminino) com vozes neurais pt-BR; reserva offline com vozes do Windows. |
 | Controla o Windows | Abre/fecha programas e jogos (Menu Iniciar, Microsoft Store, Steam), pastas, janelas, volume, lembretes, arquivos. |
-| Outlook | Não lidos, remetentes, resumos, pesquisa, anexos, agenda, rascunhos de resposta; envio só com confirmação. |
+| Outlook | Não lidos, resumos, pesquisa, anexos, responder, encaminhar, arquivar, apagar, marcar como lido; criar, remarcar e cancelar compromissos. Tudo que envia ou apaga pede confirmação. |
 | Excel Online | Descobre planilhas, pendências, atrasados, busca, resumos, inconsistências; edição só com prévia, confirmação e auditoria. |
 | WhatsApp Business | Lê as notificações do Windows (remetente e prévia), resume, abre conversas, prepara mensagens; nunca envia sozinho. |
 | Central de notificações | Une tudo, evita repetição, prioriza importantes, respeita modo jogo e horário silencioso, resume "o que perdi". |
-| Spotify | "Jarvis, toca Back in Black": toca na hora com Premium; pausar/pular funciona com qualquer conta. |
+| Spotify | "Jarvis, toca Back in Black": toca na hora com Premium; cria playlists e adiciona músicas; pausar/pular funciona com qualquer conta. |
 | Música de fundo | "Jarvis, modo Homem de Ferro": toca a trilha que você escolher, abaixando sozinha quando ele escuta ou fala. |
 | Jogos | Modo jogo automático (ex.: `NSUNS4.exe`), redução do som do jogo durante a fala, atalhos globais e combinação no controle Xbox. |
 
@@ -52,4 +52,4 @@ O microfone é processado no seu PC; só depois de chamado o comando vira texto,
 ```bat
 run_tests.bat
 ```
-140 testes automatizados cobrem interpretação de comandos, confirmações, Excel, Outlook/Graph, WhatsApp, notificações, ciclo de voz, IA e interface.
+143 testes automatizados cobrem interpretação de comandos, confirmações, Excel, Outlook/Graph, WhatsApp, notificações, ciclo de voz, IA e interface.

@@ -327,3 +327,48 @@ def test_spotify_pkce_login_with_local_callback(services):
                          transport=httpx.MockTransport(handler))
     assert svc.sign_in(timeout=10) == "Spotify conectado."
     assert svc.connected() and services.secrets.get("spotify_refresh_token") == "r"
+
+
+def test_spotify_playlists_create_add_and_play_own(services):
+    import json as _json
+
+    import httpx
+
+    from jarvis.actions.base import REGISTRY
+
+    calls = []
+
+    def handler(request: httpx.Request):
+        if "accounts.spotify.com" in str(request.url):
+            return httpx.Response(200, json={"access_token": "a", "expires_in": 3600,
+                                             "scope": "playlist-modify-private user-modify-playback-state"})
+        path = request.url.path
+        calls.append((request.method, path, _json.loads(request.content) if request.content else None))
+        if path == "/v1/me":
+            return httpx.Response(200, json={"id": "eu"})
+        if path == "/v1/me/playlists" and request.method == "POST":
+            return httpx.Response(404, json={"error": {"status": 404}})  # força o formato antigo
+        if path == "/v1/users/eu/playlists":
+            return httpx.Response(201, json={"id": "pl1", "uri": "spotify:playlist:pl1"})
+        if path == "/v1/me/playlists":
+            return httpx.Response(200, json={"items": [{"id": "pl1", "name": "Treino", "uri": "spotify:playlist:pl1",
+                                                        "owner": {"id": "eu"}}]})
+        if path == "/v1/search":
+            return httpx.Response(200, json={"tracks": {"items": [
+                {"name": "Thunderstruck", "uri": "spotify:track:t", "artists": [{"name": "AC/DC"}]}]}})
+        if path == "/v1/playlists/pl1/items":
+            return httpx.Response(201, json={"snapshot_id": "s"})
+        if path == "/v1/me/player/devices":
+            return httpx.Response(200, json={"devices": [{"id": "pc", "is_active": True}]})
+        return httpx.Response(204)
+
+    _spotify(services, handler)
+    result = REGISTRY.run(services, "spotify_create_playlist", {"name": "Treino", "query": "AC/DC"})
+    assert result.say == "Playlist Treino criada com 1 músicas."
+    assert ("POST", "/v1/playlists/pl1/items", {"uris": ["spotify:track:t"]}) in calls
+    result = REGISTRY.run(services, "spotify_add_to_playlist", {"playlist": "treino", "query": "thunderstruck"})
+    assert result.say == "Thunderstruck adicionada à playlist Treino."
+    result = REGISTRY.run(services, "spotify_play", {"query": "treino", "kind": "playlist"})
+    assert result.ok and calls[-1][2] == {"context_uri": "spotify:playlist:pl1"}
+    services.settings.set("spotify.scopes", "user-modify-playback-state")
+    assert "reconecte" in REGISTRY.run(services, "spotify_add_to_playlist", {"playlist": "treino"}).say

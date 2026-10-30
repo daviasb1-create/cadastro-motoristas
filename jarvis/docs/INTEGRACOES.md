@@ -40,8 +40,10 @@ Passos:
    - `User.Read`
    - `Mail.ReadWrite` (ler e criar rascunhos)
    - `Mail.Send` (envio, sempre com sua confirmação)
-   - `Calendars.Read`
+   - `Calendars.ReadWrite` (ler e criar/remarcar compromissos, sempre com confirmação)
    - `Files.ReadWrite.All` (planilhas suas e compartilhadas com você)
+
+Se você já tinha conectado a conta antes desta versão, conecte de novo para liberar a criação de compromissos (a permissão mudou de leitura para leitura e escrita).
 
 Desmarque em **Configurações > Microsoft 365** as funções que não quiser; o JARVIS pede só os escopos das funções ativas.
 
@@ -181,6 +183,8 @@ Regras atuais do Spotify (fevereiro de 2026): o dono do app em modo de desenvolv
 4. Em *Which API/SDKs are you planning to use?*, marque **Web API**. Salve.
 5. Copie o **Client ID** (não é necessário o Client Secret: o login usa PKCE).
 6. No JARVIS: **Configurações > Música > Client ID do app Spotify**, cole e clique em **Conectar Spotify**. Autorize na página do Spotify.
+
+Para criar e editar playlists, a autorização inclui também as permissões de playlist. Se você conectou numa versão anterior do JARVIS, clique em **Conectar Spotify** de novo.
 
 O JARVIS guarda apenas o token de renovação, no Gerenciador de Credenciais do Windows. Desconectar apaga o token.
 

@@ -128,7 +128,7 @@ class Assistant:
         intent = contextual or self.parser.parse(clean)
 
         if intent is not None:
-            for key in ("text", "fact", "instructions", "query", "contact", "to"):
+            for key in ("text", "fact", "instructions", "query", "contact", "to", "name", "playlist", "comment"):
                 value = intent.params.get(key)
                 if isinstance(value, str) and value:
                     intent.params[key] = recover_original(raw, value)

@@ -53,7 +53,16 @@ Atalhos globais (funcionam com jogo em tela cheia): `Ctrl+Alt+S` para a fala, `C
 | "lê esse e-mail" / "abre esse e-mail" / "tem anexo?" | Atua no e-mail em contexto |
 | "prepara uma resposta dizendo que envio amanhã" | Cria **rascunho**, mostra o texto e pergunta se envia |
 | "manda um e-mail para ana@empresa.com sobre a reunião" | Rascunho + confirmação |
+| "encaminha esse e-mail para o Carlos dizendo que é urgente" | Mostra e pede confirmação antes de enviar |
+| "arquiva esse e-mail" | Arquiva (dá para desfazer) |
+| "apaga esse e-mail" | Pede confirmação; vai para Itens Excluídos (dá para desfazer) |
+| "marca esse e-mail como lido" / "marca todos como lidos" | Marca (dá para desfazer) |
 | "qual minha agenda hoje/amanhã" | Calendário |
+| "marca reunião com o Carlos amanhã às 10h" | Cria o compromisso e convida o Carlos (e-mail achado nos seus contatos recentes), com confirmação |
+| "agenda uma reunião online com a Ana sexta às 15h por 30 minutos" | Reunião no Teams (contas corporativas) |
+| "marca um almoço sexta" | Pergunta o horário e cria |
+| "remarca a reunião com o Carlos para amanhã às 15h" / "adia a reunião para as 16h" | Remarca e avisa os participantes, com confirmação |
+| "cancela a reunião com a Ana" / "desmarca o compromisso de amanhã" | Cancela (se você organizou) ou recusa o convite, com confirmação |
 | "o que temos para hoje?" | Resumo do dia: agenda, e-mails, WhatsApp, lembretes, pendências |
 
 ## Excel Online
@@ -115,6 +124,9 @@ A música abaixa sozinha enquanto o JARVIS escuta (para não atrapalhar o reconh
 | "que música é essa?" | Diz o que está tocando (conectado) |
 | "aumenta a música" / "abaixa a música" | Volume do Spotify (quando a música de fundo não estiver tocando) |
 | "modo aleatório" | Liga o aleatório |
+| "cria uma playlist chamada Treino com músicas do AC/DC" | Cria playlist privada já com músicas |
+| "adiciona essa música na playlist Treino" / "coloca Thunderstruck na playlist Treino" | Adiciona à sua playlist |
+| "toca a playlist Treino" | Toca as suas playlists primeiro |
 
 Configuração: [INTEGRACOES.md, seção Spotify](INTEGRACOES.md#5-spotify).
 

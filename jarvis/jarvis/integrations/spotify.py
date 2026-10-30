@@ -33,7 +33,8 @@ log = logging.getLogger(__name__)
 AUTH_URL = "https://accounts.spotify.com/authorize"
 TOKEN_URL = "https://accounts.spotify.com/api/token"
 API = "https://api.spotify.com/v1"
-SCOPES = "user-read-playback-state user-modify-playback-state user-read-currently-playing"
+SCOPES = ("user-read-playback-state user-modify-playback-state user-read-currently-playing "
+          "playlist-read-private playlist-modify-private playlist-modify-public")
 REDIRECT_PORT = 8888
 REDIRECT_URI = f"http://127.0.0.1:{REDIRECT_PORT}/callback"
 REFRESH_SECRET = "spotify_refresh_token"
@@ -172,6 +173,8 @@ class SpotifyService:
         self._expires = time.time() + int(payload.get("expires_in", 3600)) - 60
         if payload.get("refresh_token"):  # o Spotify pode trocar o refresh token a cada renovação
             self.secrets.set(REFRESH_SECRET, payload["refresh_token"])
+        if payload.get("scope"):
+            self.settings.set("spotify.scopes", payload["scope"])
 
     def _access_token(self) -> str:
         with self._lock:
@@ -255,6 +258,41 @@ class SpotifyService:
             body = {"context_uri": uri} if context else {"uris": [uri]}
         self.api("PUT", "/me/player/play", params={"device_id": device}, json=body)
 
+    # ----------------------------------------------------------- playlists
+    def require_playlist_scope(self) -> None:
+        granted = self.settings.get("spotify.scopes", "") or ""
+        if granted and "playlist-modify-private" not in granted:
+            raise ServiceUnavailable("Para mexer em playlists, reconecte o Spotify em Configurações > Música "
+                                     "(a autorização antiga não incluía playlists).")
+
+    def my_playlists(self) -> list[dict]:
+        me = self.api("GET", "/me") or {}
+        data = self.api("GET", "/me/playlists", params={"limit": 50}) or {}
+        return [p for p in data.get("items", []) if p and (p.get("owner") or {}).get("id") == me.get("id")]
+
+    def create_playlist(self, name: str) -> dict:
+        body = {"name": name, "public": False, "description": "Criada pelo JARVIS"}
+        try:
+            return self.api("POST", "/me/playlists", json=body)
+        except ServiceUnavailable as exc:
+            if isinstance(exc, PremiumRequired):
+                raise
+            # formato anterior a fev/2026
+            me = self.api("GET", "/me") or {}
+            return self.api("POST", f"/users/{me.get('id')}/playlists", json=body)
+
+    def add_items(self, playlist_id: str, uris: list[str]) -> None:
+        try:
+            self.api("POST", f"/playlists/{playlist_id}/items", json={"uris": uris})
+        except ServiceUnavailable as exc:
+            if isinstance(exc, PremiumRequired):
+                raise
+            self.api("POST", f"/playlists/{playlist_id}/tracks", json={"uris": uris})
+
+    def search_tracks(self, query: str, limit: int = 10) -> list[dict]:
+        data = self.api("GET", "/search", params={"q": query, "type": "track", "limit": limit}) or {}
+        return [i for i in (data.get("tracks") or {}).get("items", []) if i]
+
     def _open(self, url: str) -> None:
         if self.open_url:
             self.open_url(url)
@@ -297,7 +335,18 @@ def spotify_play(services, params):
         return ActionResult(f"Abri a busca por {query} no Spotify. Para eu tocar direto, conecte o Spotify Premium "
                             "em Configurações.")
     try:
-        item = svc.search(query, kind)
+        item = None
+        if kind == "playlist":
+            # primeiro as playlists do próprio usuário (privadas não aparecem na busca pública)
+            try:
+                mine = svc.my_playlists()
+            except ServiceUnavailable:
+                mine = []
+            target = normalize(query)
+            best = max(mine, key=lambda p: similar(target, normalize(p.get("name", ""))), default=None)
+            if best and similar(target, normalize(best.get("name", ""))) >= 0.75:
+                item = best
+        item = item or svc.search(query, kind)
         if item is None:
             return ActionResult.fail(f"Não encontrei {query} no Spotify.")
         if kind == "track":
@@ -387,3 +436,59 @@ def spotify_now_playing(services, params):
     if not item:
         return ActionResult("Nada tocando no Spotify agora.")
     return ActionResult(f"Está tocando {_describe(item, 'track')}.")
+
+
+@action("spotify_create_playlist", "Cria uma playlist privada no Spotify, opcionalmente já com músicas de uma busca (ex.: artista).",
+        props(["name"], name=STR, query=STR, play=BOOL))
+def spotify_create_playlist(services, params):
+    svc = _svc(services)
+    if not svc.connected():
+        return ActionResult.fail("Para criar playlists, conecte o Spotify em Configurações > Música.")
+    svc.require_playlist_scope()
+    name = (params.get("name") or "").strip() or "Playlist do JARVIS"
+    playlist = svc.create_playlist(name)
+    added = 0
+    query = (params.get("query") or "").strip()
+    if query:
+        uris = [t["uri"] for t in svc.search_tracks(query)]
+        if uris:
+            svc.add_items(playlist["id"], uris)
+            added = len(uris)
+    services.context.remember(spotify_playlist=name)
+    services.activity(f"Spotify: playlist criada {name}", kind="music")
+    say = f"Playlist {name} criada" + (f" com {added} músicas" if added else "") + "."
+    if params.get("play") and added:
+        svc.play(playlist["uri"], context=True)
+        say += " Tocando."
+
+    def undo() -> str:
+        svc.api("DELETE", f"/playlists/{playlist['id']}/followers")
+        return "Playlist removida."
+
+    return ActionResult(say, undo=undo, undo_label="criar playlist")
+
+
+@action("spotify_add_to_playlist", "Adiciona a música que está tocando (ou uma busca) a uma playlist sua.",
+        props(["playlist"], playlist=STR, query=STR))
+def spotify_add_to_playlist(services, params):
+    svc = _svc(services)
+    if not svc.connected():
+        return ActionResult.fail("Para mexer em playlists, conecte o Spotify em Configurações > Música.")
+    svc.require_playlist_scope()
+    wanted = normalize(params.get("playlist") or "")
+    playlists = svc.my_playlists()
+    best = max(playlists, key=lambda p: similar(wanted, normalize(p.get("name", ""))), default=None)
+    if best is None or similar(wanted, normalize(best.get("name", ""))) < 0.6:
+        return ActionResult.fail(f"Não encontrei uma playlist sua chamada {params.get('playlist')}. "
+                                 "Posso criar: diga cria uma playlist chamada ...")
+    query = (params.get("query") or "").strip()
+    if query:
+        tracks = svc.search_tracks(query, limit=5)
+        track = tracks[0] if tracks else None
+    else:
+        track = ((svc.api("GET", "/me/player/currently-playing") or {}).get("item"))
+    if not track:
+        return ActionResult.fail("Não encontrei a música para adicionar.")
+    svc.add_items(best["id"], [track["uri"]])
+    services.activity(f"Spotify: {track.get('name')} adicionada a {best.get('name')}", kind="music")
+    return ActionResult(f"{track.get('name')} adicionada à playlist {best.get('name')}.")

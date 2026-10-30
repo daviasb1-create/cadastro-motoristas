@@ -12,7 +12,7 @@ from typing import Any, Callable
 
 from .normalize import normalize, similar
 from .numbers import words_to_digits
-from .timeparse import parse_when
+from .timeparse import day_hint, parse_when
 
 
 @dataclass
@@ -123,6 +123,15 @@ def _music_rule(text: str) -> Intent | None:
         return Intent("spotify_now_playing")
     if re.search(r"\b(aleatorio|embaralha|shuffle)\b", t):
         return Intent("spotify_shuffle", {"active": not re.search(r"\b(desliga|desativa|tira|sem)\b", t)})
+    m = re.search(r"\b(?:cria|crie|criar|faz|faca|monta|monte)\s+(?:uma\s+)?playlist\s+(?:chamada|com o nome|de nome)\s+(?P<name>.+?)"
+                  r"(?:\s+com\s+(?:as\s+|umas\s+)?(?:musicas|sons)\s+(?:de|do|da|dos|das)\s+(?P<q>.+))?$", t)
+    if m:
+        return Intent("spotify_create_playlist", {"name": m.group("name").strip(), "query": (m.group("q") or "").strip()})
+    m = re.search(r"\b(?:adiciona|adicione|coloca|coloque|bota|salva|salve|poe|inclui)\s+(?P<what>.+?)\s+na\s+(?:minha\s+)?playlist\s+(?:de\s+|do\s+|da\s+)?(?P<pl>.+)$", t)
+    if m:
+        what = m.group("what").strip()
+        query = "" if re.fullmatch(r"(essa|esta|a) (musica|faixa)|essa|isso|ela|a que (ta|esta) tocando", what) else re.sub(r"^(a musica|musica)\s+", "", what)
+        return Intent("spotify_add_to_playlist", {"playlist": m.group("pl").strip(), "query": query})
     m = PLAY_RE.match(t)
     if m:
         rest = re.sub(r"\s+(no|pelo|do) spotify$", "", m.group("rest")).strip()
@@ -223,6 +232,53 @@ def _notifications_rule(text: str) -> Intent | None:
     return None
 
 
+_EVENT_WORDS = r"(reuniao|compromisso|evento|call|consulta|almoco|visita|entrevista|treino)"
+
+
+def _calendar_write_rule(text: str) -> Intent | None:
+    """Criar, remarcar e cancelar compromissos (todos pedem confirmação depois)."""
+    t = text
+    m = re.search(rf"\b(?:remarca|remarque|remarcar|muda|mude|adia|adie|passa|transfere|move)\s+(?:a |o |minha |meu )?{_EVENT_WORDS}"
+                  r"(?:\s+(?:com|de|do|da|sobre)\s+(?:o |a |os |as )?(?P<q>.+?))?\s+(?:para|pra)\s+(?P<when>.+)$", t)
+    if m:
+        when = m.group("when")
+        due, _ = parse_when("as " + when if re.match(r"^\d", when) else when)
+        if due:
+            return Intent("calendar_move", {"query": (m.group("q") or "").strip(), "new_start": due.isoformat()})
+    m = re.search(rf"\b(?:cancela|cancele|cancelar|desmarca|desmarque|desmarcar)\s+(?:a |o |minha |meu )?{_EVENT_WORDS}"
+                  r"(?:\s+(?:com|de|do|da|sobre)\s+(?:o |a |os |as )?(?P<q>.+?))?$", t)
+    if m:
+        query = (m.group("q") or "").strip()
+        day = query if query in ("hoje", "amanha") else ""
+        return Intent("calendar_cancel", {"query": "" if day else query, "day": day})
+    m = re.search(rf"\b(?:marca|marque|marcar|agenda|agende|agendar|cria|crie|criar|coloca|coloque|bota)\s+(?:um |uma |o |a |na agenda )?{_EVENT_WORDS}\b(?P<rest>.*)$", t)
+    if not m:
+        return None
+    rest = m.group("rest")
+    online = bool(re.search(r"\b(online|on line|teams|virtual|remota?)\b", rest))
+    rest = re.sub(r"\b(online|on line|pelo teams|no teams|virtual|remota?)\b", " ", rest)
+    duration = 60
+    dm = re.search(r"\b(?:por|de|durante)\s+(\d+)\s*(minutos?|min|horas?|h)\b", words_to_digits(rest))
+    if dm:
+        duration = int(dm.group(1)) * (60 if dm.group(2).startswith("h") else 1)
+        rest = words_to_digits(rest).replace(dm.group(0), " ")
+    if re.search(r"\bmeia hora\b", rest):
+        duration, rest = 30, rest.replace("meia hora", " ")
+    due, remaining = parse_when(rest)
+    attendee = ""
+    remaining = re.sub(r"\b(amanha|hoje|(na |no |nesta |neste |proxima |proximo )?(segunda|terca|quarta|quinta|sexta|sabado|domingo)( feira)?)\b", " ", remaining)
+    am = re.search(r"\bcom\s+(?:o |a |os |as )?([a-z@\.\-]+(?:\s+(?!sobre|para|no|na|de|do|da|as|a\b)[a-z]+)?)", remaining)
+    if am:
+        attendee = am.group(1).strip()
+    about = re.search(r"\bsobre\s+(.+)$", remaining)
+    label = {"reuniao": "Reunião", "almoco": "Almoço"}.get(m.group(1), m.group(1).capitalize())
+    subject = label + (f" com {attendee.title()}" if attendee and "@" not in attendee else "") + (
+        f" sobre {about.group(1).strip()}" if about else "")
+    params = {"subject": subject, "start": due.isoformat() if due else None, "duration_minutes": duration,
+              "attendees": [attendee] if attendee else [], "online": online, "day_hint": "" if due else day_hint(rest)}
+    return Intent("calendar_create", params)
+
+
 def _agenda_rule(text: str) -> Intent | None:
     t = text
     if re.search(r"o que (temos|tenho|tem) (pra|para) (hoje|amanha|agora)|como (esta|e) (o )?meu dia|resumo do dia|bom dia", t):
@@ -287,8 +343,18 @@ def _memory_rule(text: str) -> Intent | None:
 
 def _email_rule(text: str) -> Intent | None:
     t = text
-    if not re.search(r"\b(emails?|correio|caixa de entrada|outlook|mensagem do gestor|meu gestor|meu chefe|anexos?)\b", t):
+    if not re.search(r"\b(emails?|correio|caixa de entrada|outlook|mensagem do gestor|meu gestor|meu chefe|anexos?)\b|\bcomo lid", t):
         return None
+    index = 1 if re.search(r"\bsegundo\b", t) else (2 if re.search(r"\bterceiro\b", t) else 0)
+    m = re.search(r"\b(?:encaminha|encaminhe|encaminhar|repassa|repasse|reencaminha)\b.*?\b(?:para|pra|pro)\s+(?:o\s+|a\s+)?(.+?)(?:\s+(?:dizendo|falando|com o comentario|com a mensagem)\s+(?:que\s+)?(.+))?$", t)
+    if m:
+        return Intent("email_forward", {"to": m.group(1).strip(), "comment": (m.group(2) or "").strip(), "index": index})
+    if re.search(r"\bmarca\w*\b.*\blid[oa]s?\b", t):
+        return Intent("email_mark_read", {"all": bool(re.search(r"\b(todos|tudo|todas)\b", t)), "index": index})
+    if re.search(r"\b(arquiva|arquive|arquivar)\b", t):
+        return Intent("email_archive", {"index": index})
+    if re.search(r"\b(apaga|apague|apagar|exclui|exclua|excluir|deleta|delete|deletar|joga fora)\b", t):
+        return Intent("email_delete", {"index": index})
     if re.search(rf"^{OPEN_VERBS}\s+(o\s+)?(meu\s+)?(outlook|email|correio)$", t):
         return Intent("open_target", {"target": "outlook"})
     if re.search(r"\b(prepara|prepare|escreve|escreva|redige|redija|faz|faca|cria|crie|rascunho)\b.*\b(resposta|responder)\b", t):
@@ -493,6 +559,7 @@ RULES: list[Rule] = [
     _whatsapp_rule,
     _excel_rule,
     _record_search_rule,
+    _calendar_write_rule,
     _agenda_rule,
     _file_rule,
     _window_rule,

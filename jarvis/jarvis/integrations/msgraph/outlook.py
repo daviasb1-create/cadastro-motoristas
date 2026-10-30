@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from ...actions.base import BOOL, INT, STR, ActionResult, PendingAction, ServiceUnavailable, action, props
-from ...nlu.normalize import normalize
+from ...nlu.normalize import normalize, similar
 
 log = logging.getLogger(__name__)
 
@@ -180,7 +180,71 @@ class OutlookService:
             raise ServiceUnavailable("O envio de e-mails está desativado nas configurações.")
         self.client.post(f"/me/messages/{draft_id}/send")
 
+    def create_forward(self, mail_id: str, to: str, comment: str) -> dict:
+        self._require()
+        return self.client.post(f"/me/messages/{mail_id}/createForward", json={
+            "comment": comment, "toRecipients": [{"emailAddress": {"address": to}}]})
+
+    def move(self, mail_id: str, folder: str) -> dict:
+        """Move para uma pasta conhecida (archive, deleteditems, inbox). Retorna a mensagem com o novo id."""
+        self._require()
+        return self.client.post(f"/me/messages/{mail_id}/move", json={"destinationId": folder})
+
+    def set_read(self, mail_id: str, read: bool = True) -> None:
+        self._require()
+        self.client.patch(f"/me/messages/{mail_id}", json={"isRead": read})
+
     # ------------------------------------------------------------- agenda
+    def upcoming(self, days: int = 14) -> list[dict]:
+        self._require()
+        start = datetime.now()
+        data = self.client.get("/me/calendarView", params={
+            "startDateTime": _iso_utc(start), "endDateTime": _iso_utc(start + timedelta(days=days)),
+            "$orderby": "start/dateTime", "$top": 50,
+            "$select": "id,subject,start,end,isAllDay,isCancelled,isOrganizer,attendees,webLink"},
+            headers={"Prefer": 'outlook.timezone="UTC"'})
+        events = []
+        for ev in data.get("value", []):
+            if ev.get("isCancelled"):
+                continue
+            ev["_start"] = _parse_dt((ev.get("start") or {}).get("dateTime", "") + "Z")
+            ev["_end"] = _parse_dt((ev.get("end") or {}).get("dateTime", "") + "Z")
+            events.append(ev)
+        return events
+
+    def create_event(self, subject: str, start: datetime, end: datetime, attendees: list[str] | None = None,
+                     location: str = "", online: bool = False) -> dict:
+        self._require()
+        body: dict[str, Any] = {
+            "subject": subject,
+            "start": {"dateTime": _iso_utc(start)[:-1], "timeZone": "UTC"},
+            "end": {"dateTime": _iso_utc(end)[:-1], "timeZone": "UTC"},
+            "attendees": [{"emailAddress": {"address": a}, "type": "required"} for a in attendees or []],
+        }
+        if location:
+            body["location"] = {"displayName": location}
+        if online:
+            body["isOnlineMeeting"] = True
+            body["onlineMeetingProvider"] = "teamsForBusiness"
+        return self.client.post("/me/events", json=body)
+
+    def move_event(self, event_id: str, start: datetime, end: datetime) -> None:
+        self._require()
+        self.client.patch(f"/me/events/{event_id}", json={
+            "start": {"dateTime": _iso_utc(start)[:-1], "timeZone": "UTC"},
+            "end": {"dateTime": _iso_utc(end)[:-1], "timeZone": "UTC"}})
+
+    def cancel_event(self, event: dict, comment: str = "") -> None:
+        """Organizador: cancela e avisa os participantes. Convidado: recusa o convite."""
+        self._require()
+        if event.get("isOrganizer", True):
+            if event.get("attendees"):
+                self.client.post(f"/me/events/{event['id']}/cancel", json={"comment": comment})
+            else:
+                self.client.request("DELETE", f"/me/events/{event['id']}")
+        else:
+            self.client.post(f"/me/events/{event['id']}/decline", json={"comment": comment, "sendResponse": True})
+
     def events(self, day: datetime) -> list[dict]:
         self._require()
         start = day.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -505,6 +569,209 @@ def calendar(services, params):
         for e in upcoming[:3])
     return ActionResult(f"{len(upcoming)} compromisso{'s' if len(upcoming) > 1 else ''} {label}: {spoken}.",
                         display="\n".join(lines))
+
+
+# ---------------------------------------------------------- e-mails: ações
+def _mail_or_fail(services, index: int = 0) -> dict:
+    mail = _context_mail(services, index)
+    if not mail:
+        raise ServiceUnavailable("Qual e-mail? Peça antes para eu procurar ou listar os e-mails.")
+    return mail
+
+
+@action("email_forward", "Encaminha o e-mail em contexto para alguém (mostra e pede confirmação antes de enviar).",
+        props(["to"], to=STR, comment=STR, index=INT))
+def email_forward(services, params):
+    svc = _svc(services)
+    mail = _mail_or_fail(services, int(params.get("index", 0)))
+    to = (params.get("to") or "").strip()
+    address = to if "@" in to else _resolve_address(svc, to)
+    if not address:
+        return ActionResult.fail(f"Não encontrei o endereço de {to}. Diga o e-mail completo.")
+    comment = (params.get("comment") or "").strip()
+    draft = svc.create_forward(mail["id"], address, comment)
+    preview = f"Encaminhar: {mail['subject']} (de {mail['sender_name']})\nPara: {address}\n\n{comment}"
+    question = f"Encaminho o e-mail {mail['subject']} para {address}?"
+
+    def send() -> ActionResult:
+        svc.send_draft(draft["id"])
+        services.activity(f"E-mail encaminhado para {address}", kind="outlook")
+        return ActionResult("Encaminhado.")
+
+    return ActionResult(question, display=preview, expects_reply=True,
+                        pending=PendingAction(question=question, execute=send, details=preview))
+
+
+@action("email_archive", "Arquiva o e-mail em contexto (pode ser desfeito).", props(index=INT))
+def email_archive(services, params):
+    svc = _svc(services)
+    mail = _mail_or_fail(services, int(params.get("index", 0)))
+    moved = svc.move(mail["id"], "archive")
+    services.activity(f"E-mail arquivado: {mail['subject']}", kind="outlook")
+    new_id = moved.get("id", mail["id"])
+    return ActionResult("Arquivado.", undo=lambda: (svc.move(new_id, "inbox"), "E-mail de volta à caixa de entrada.")[1],
+                        undo_label="arquivar e-mail")
+
+
+def _delete_mail(services, params):
+    svc = _svc(services)
+    mail = _mail_or_fail(services, int(params.get("index", 0)))
+    question = f"Apagar o e-mail {mail['subject']}, de {mail['sender_name']}? Ele vai para Itens Excluídos."
+
+    def execute() -> ActionResult:
+        moved = svc.move(mail["id"], "deleteditems")
+        services.activity(f"E-mail apagado: {mail['subject']}", kind="outlook")
+        new_id = moved.get("id", mail["id"])
+        return ActionResult("Apagado.", undo=lambda: (svc.move(new_id, "inbox"), "E-mail restaurado.")[1],
+                            undo_label="apagar e-mail")
+
+    return ActionResult(question, expects_reply=True, pending=PendingAction(question=question, execute=execute))
+
+
+@action("email_delete", "Apaga (move para Itens Excluídos) o e-mail em contexto, com confirmação.", props(index=INT))
+def email_delete(services, params):
+    return _delete_mail(services, params)
+
+
+@action("email_mark_read", "Marca como lido o e-mail em contexto, ou todos os não lidos (all=true).",
+        props(index=INT, all=BOOL))
+def email_mark_read(services, params):
+    svc = _svc(services)
+    if params.get("all"):
+        mails = svc.unread(top=50)
+        if not mails:
+            return ActionResult("Nenhum e-mail não lido.")
+        for mail in mails:
+            svc.set_read(mail.id, True)
+        ids = [m.id for m in mails]
+
+        def undo() -> str:
+            for mail_id in ids:
+                svc.set_read(mail_id, False)
+            return "E-mails voltaram a não lidos."
+
+        return ActionResult(f"{len(ids)} e-mails marcados como lidos.", undo=undo, undo_label="marcar como lidos")
+    mail = _mail_or_fail(services, int(params.get("index", 0)))
+    svc.set_read(mail["id"], True)
+    return ActionResult("Marcado como lido.", undo=lambda: (svc.set_read(mail["id"], False), "Desfeito.")[1],
+                        undo_label="marcar como lido")
+
+
+# ------------------------------------------------------------ agenda: ações
+def _find_event(svc: OutlookService, query: str, day: str = "") -> dict | None:
+    events = svc.upcoming()
+    if day:
+        wanted = (datetime.now() + timedelta(days=1 if day == "amanha" else 0)).date()
+        events = [e for e in events if e["_start"].date() == wanted]
+    target = normalize(query or "")
+    if not target:
+        return events[0] if events else None
+    best = None
+    for ev in events:
+        names = " ".join((a.get("emailAddress") or {}).get("name", "") for a in ev.get("attendees", []))
+        score = max(similar(target, normalize(ev.get("subject", ""))), similar(target, normalize(names)) * 0.95)
+        if score >= 0.55 and (best is None or score > best[0]):
+            best = (score, ev)
+    return best[1] if best else None
+
+
+def _when_text(dt: datetime) -> str:
+    from ...nlu.timeparse import describe
+
+    return describe(dt)
+
+
+@action("calendar_create", "Cria compromisso/reunião no calendário. start em ISO local. Convida participantes por e-mail. Pede confirmação.",
+        props(["subject", "start"], subject=STR, start=STR, duration_minutes=INT,
+              attendees={"type": "array", "items": {"type": "string"}}, location=STR, online=BOOL))
+def calendar_create(services, params):
+    svc = _svc(services)
+    if not params.get("start"):
+        hint = params.get("day_hint", "")
+        question = f"{hint.capitalize()} a que horas?" if hint else "Para quando?"
+        return ActionResult(question, expects_reply=True,
+                            follow_up=lambda t: _create_from_text(services, params, f"{hint} {t}".strip()))
+    start = datetime.fromisoformat(params["start"])
+    end = start + timedelta(minutes=int(params.get("duration_minutes") or 60))
+    subject = (params.get("subject") or "Compromisso").strip()
+    attendees = []
+    unresolved = []
+    for person in params.get("attendees") or []:
+        address = person if "@" in person else _resolve_address(svc, person)
+        (attendees if address else unresolved).append(address or person)
+    preview = (f"Compromisso: {subject}\nQuando: {start:%d/%m/%Y %H:%M} até {end:%H:%M}"
+               + (f"\nConvidados: {', '.join(attendees)}" if attendees else "")
+               + (f"\nSem e-mail encontrado para: {', '.join(unresolved)} (não serão convidados)" if unresolved else "")
+               + (f"\nLocal: {params['location']}" if params.get("location") else "")
+               + ("\nReunião online (Teams)" if params.get("online") else ""))
+    question = f"Marco {subject} {_when_text(start)}" + (" e envio os convites" if attendees else "") + "?"
+
+    def execute() -> ActionResult:
+        event = svc.create_event(subject, start, end, attendees, params.get("location", ""), bool(params.get("online")))
+        services.activity(f"Compromisso criado: {subject} {start:%d/%m %H:%M}", kind="outlook")
+        event_id = event.get("id")
+
+        def undo() -> str:
+            svc.cancel_event({"id": event_id, "isOrganizer": True, "attendees": attendees}, "Compromisso cancelado.")
+            return "Compromisso removido."
+
+        return ActionResult("Marcado na sua agenda.", undo=undo if event_id else None, undo_label="compromisso")
+
+    return ActionResult(question, display=preview, expects_reply=True,
+                        pending=PendingAction(question=question, execute=execute, details=preview))
+
+
+def _create_from_text(services, params, text):
+    from ...nlu.timeparse import parse_when
+
+    text = normalize(text)
+    due, _ = parse_when("as " + text if re.match(r"^\S*\s*\d", text) and not text.startswith(("as ", "a ")) else text)
+    if not due:
+        return ActionResult.fail("Não entendi o horário. Diga, por exemplo, amanhã às 10.")
+    return calendar_create(services, {**params, "start": due.isoformat()})
+
+
+@action("calendar_move", "Remarca um compromisso existente (procura pelo assunto ou participante) para novo horário. Pede confirmação.",
+        props(["new_start"], query=STR, new_start=STR))
+def calendar_move(services, params):
+    svc = _svc(services)
+    event = _find_event(svc, params.get("query", ""))
+    if not event:
+        return ActionResult.fail("Não encontrei esse compromisso nos próximos 14 dias.")
+    new_start = datetime.fromisoformat(params["new_start"])
+    duration = event["_end"] - event["_start"]
+    new_end = new_start + duration
+    notify = " Os participantes serão avisados." if event.get("attendees") else ""
+    question = f"Remarco {event.get('subject')} de {event['_start']:%d/%m %H:%M} para {_when_text(new_start)}?{notify}"
+    old_start, old_end = event["_start"], event["_end"]
+
+    def execute() -> ActionResult:
+        svc.move_event(event["id"], new_start, new_end)
+        services.activity(f"Compromisso remarcado: {event.get('subject')} -> {new_start:%d/%m %H:%M}", kind="outlook")
+        return ActionResult("Remarcado.", undo=lambda: (svc.move_event(event["id"], old_start, old_end),
+                                                         "Horário original restaurado.")[1], undo_label="remarcar")
+
+    return ActionResult(question, expects_reply=True, pending=PendingAction(question=question, execute=execute))
+
+
+@action("calendar_cancel", "Cancela um compromisso (organizador avisa participantes; convidado recusa). Pede confirmação.",
+        props(query=STR, day=STR | {"enum": ["", "hoje", "amanha"]}, comment=STR))
+def calendar_cancel(services, params):
+    svc = _svc(services)
+    event = _find_event(svc, params.get("query", ""), params.get("day", ""))
+    if not event:
+        return ActionResult.fail("Não encontrei esse compromisso nos próximos 14 dias.")
+    organizer = event.get("isOrganizer", True)
+    action_text = "Cancelo" if organizer else "Recuso o convite de"
+    notify = " e aviso os participantes" if organizer and event.get("attendees") else ""
+    question = f"{action_text} {event.get('subject')}, {event['_start']:%d/%m às %H:%M}{notify}?"
+
+    def execute() -> ActionResult:
+        svc.cancel_event(event, params.get("comment", ""))
+        services.activity(f"Compromisso cancelado: {event.get('subject')}", kind="outlook")
+        return ActionResult("Cancelado." if organizer else "Convite recusado.")
+
+    return ActionResult(question, expects_reply=True, pending=PendingAction(question=question, execute=execute))
 
 
 def daily_briefing_parts(services, day: str) -> list[str]:
