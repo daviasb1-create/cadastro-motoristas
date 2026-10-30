@@ -185,7 +185,7 @@ class NotificationCenter:
         when = datetime.fromtimestamp(n["ts"]).strftime("%d/%m %H:%M")
         mark = "★ " if n.get("important") else ""
         body = n.get("body") if n.get("content_available") else "(conteúdo indisponível)"
-        title = f" — {n['title']}" if n.get("title") and n.get("title") != n.get("sender") else ""
+        title = f" - {n['title']}" if n.get("title") and n.get("title") != n.get("sender") else ""
         return f"{mark}{when} [{n.get('app') or n['source']}] {n.get('sender') or ''}{title}: {body or ''}".strip()
 
     def summary(self, since: float) -> ActionResult:

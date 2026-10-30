@@ -29,6 +29,6 @@ def for_speech(text: str) -> str:
     """Limpa texto para síntese de voz (remove URLs, marcadores e símbolos)."""
     text = re.sub(r"https?://\S+", "", text)
     text = re.sub(r"[*_#`>|•]+", " ", text)
-    text = text.replace("—", ", ").replace("–", ", ")
+    text = re.sub(r"\s[\u2014\u2013-]\s", ", ", text).replace("\u2014", ", ")
     text = re.sub(r"\s+", " ", text)
     return text.strip()

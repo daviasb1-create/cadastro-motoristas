@@ -418,7 +418,7 @@ class SettingsDialog(QDialog):
     def _wb_refresh(self) -> None:
         self.wb_list.clear()
         for wb in self.settings.get("excel.workbooks", []) or []:
-            item = QListWidgetItem(f"{wb.get('alias')}  —  {wb.get('name')}")
+            item = QListWidgetItem(f"{wb.get('alias')}  -  {wb.get('name')}")
             item.setData(Qt.UserRole, wb.get("item_id"))
             self.wb_list.addItem(item)
 

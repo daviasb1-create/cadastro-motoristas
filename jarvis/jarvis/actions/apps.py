@@ -460,7 +460,7 @@ def file_search(services, params):
     if not found:
         return ActionResult.fail(f"Não encontrei arquivos parecidos com {query}.")
     services.context.remember(files=[str(p) for _, p in found])
-    listing = "\n".join(f"{i + 1}. {p.name} — {p.parent}" for i, (_, p) in enumerate(found))
+    listing = "\n".join(f"{i + 1}. {p.name} - {p.parent}" for i, (_, p) in enumerate(found))
     if len(found) == 1 or found[0][0] - found[1][0] > 0.15:
         return ActionResult(f"Encontrei {found[0][1].name}. Quer que eu abra?", display=listing,
                             expects_reply=True, pending=_open_file_pending(services, found[0][1]))

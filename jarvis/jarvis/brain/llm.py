@@ -102,7 +102,9 @@ class LLMClient:
 
         model = self.settings.get("ai.anthropic_model", "claude-opus-5-5")
         request = dict(model=model, max_tokens=kwargs.pop("max_tokens", 4096),
-                       output_config={"effort": self.settings.get("ai.effort", "low")}, **kwargs)
+                       output_config={"effort": self.settings.get("ai.effort", "low")},
+                       # ferramentas e instruções são fixas: o cache reduz custo e latência
+                       cache_control={"type": "ephemeral"}, **kwargs)
         # Fallback automático do servidor caso o modelo recuse por política
         # (disponível para Opus/Sonnet 5.5 e Fable; Haiku não tem fallback).
         if not model.startswith("claude-haiku"):

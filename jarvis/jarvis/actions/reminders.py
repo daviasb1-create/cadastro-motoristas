@@ -85,7 +85,7 @@ def reminder_list(services, params):
     items = services.reminders.pending()
     if not items:
         return ActionResult("Você não tem lembretes pendentes.")
-    lines = [f"{datetime.fromtimestamp(r['due']):%d/%m %H:%M} — {r['text']}" for r in items]
+    lines = [f"{datetime.fromtimestamp(r['due']):%d/%m %H:%M} - {r['text']}" for r in items]
     first = items[0]
     say = (f"Você tem {len(items)} lembrete{'s' if len(items) > 1 else ''}. "
            f"O próximo é {describe(datetime.fromtimestamp(first['due']))}: {first['text']}.")

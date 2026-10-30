@@ -79,7 +79,7 @@ class MainWindow(QMainWindow):
             top.addWidget(chip)
             top.addSpacing(8)
         top.addSpacing(10)
-        for text, tip, slot in (("⚙", "Configurações", self.app.open_settings), ("—", "Minimizar para a bandeja", self.hide),
+        for text, tip, slot in (("⚙", "Configurações", self.app.open_settings), ("−", "Minimizar para a bandeja", self.hide),
                                 ("✕", "Fechar (continua na bandeja)", self.close)):
             btn = QPushButton(text)
             btn.setObjectName("flat")

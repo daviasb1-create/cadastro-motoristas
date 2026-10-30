@@ -234,7 +234,7 @@ def _memory_rule(text: str) -> Intent | None:
 
 def _email_rule(text: str) -> Intent | None:
     t = text
-    if not re.search(r"\b(emails?|correio|caixa de entrada|outlook|mensagem do gestor|meu gestor|meu chefe)\b", t):
+    if not re.search(r"\b(emails?|correio|caixa de entrada|outlook|mensagem do gestor|meu gestor|meu chefe|anexos?)\b", t):
         return None
     if re.search(rf"^{OPEN_VERBS}\s+(o\s+)?(meu\s+)?(outlook|email|correio)$", t):
         return Intent("open_target", {"target": "outlook"})
@@ -312,6 +312,8 @@ def _excel_rule(text: str) -> Intent | None:
     t = text
     sheet_word = re.search(r"\b(planilhas?|tabelas?|excel)\b", t)
     pend = re.search(r"\b(pendencias?|pendentes?|atrasad[ao]s?|em aberto|vencid[ao]s?)\b", t)
+    if re.search(r"\binconsistenc", t):
+        return Intent("excel_check")
     if not (sheet_word or pend):
         return None
     if re.search(r"\b(lista|listar|quais|mostra)\b.*\bplanilhas\b", t):
@@ -397,6 +399,12 @@ def _open_close_rule(text: str) -> Intent | None:
     return None
 
 
+def _refresh_rule(text: str) -> Intent | None:
+    if re.search(r"\b(atualiza|atualize|recarrega)\b.*\b(lista|catalogo)\b.*\b(programas|jogos|aplicativos)\b", text):
+        return Intent("refresh_apps")
+    return None
+
+
 def _help_rule(text: str) -> Intent | None:
     if re.search(r"o que (voce )?(sabe|pode|consegue) fazer|\bajuda\b|\bcomandos\b|\bcomo (te|voce) uso\b", text):
         return Intent("help")
@@ -435,6 +443,7 @@ RULES: list[Rule] = [
     _file_rule,
     _window_rule,
     _help_rule,
+    _refresh_rule,
     _open_close_rule,
 ]
 

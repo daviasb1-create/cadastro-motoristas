@@ -22,10 +22,15 @@ def normalize(text: str) -> str:
     text = text.replace("e-mail", "email").replace("e-mails", "emails")
     text = strip_accents(text)
     text = re.sub(r"\be mails?\b", lambda m: "emails" if m.group(0).endswith("s") else "email", text)
+    emails = re.findall(r"[\w\.\-+]+@[\w\-]+(?:\.[\w\-]+)+", text)
+    for index, email in enumerate(emails):
+        text = text.replace(email, f" emailtoken{index} ")
     text = re.sub(r"[^\w\s%:/\.\-@+]", " ", text)
     text = re.sub(r"(?<!\d)[\.\-](?!\d)", " ", text)
     text = re.sub(r"[\.\-:]+(?=\s|$)", " ", text)
     text = _POLITE_RE.sub(" ", text)
+    for index, email in enumerate(emails):
+        text = text.replace(f"emailtoken{index}", email)
     return _SPACES.sub(" ", text).strip()
 
 

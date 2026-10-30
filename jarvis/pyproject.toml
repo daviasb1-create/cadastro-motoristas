@@ -1,0 +1,13 @@
+[project]
+name = "jarvis-assistente"
+version = "1.0.0"
+description = "JARVIS - assistente pessoal por voz para Windows 11 (pt-BR)"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"

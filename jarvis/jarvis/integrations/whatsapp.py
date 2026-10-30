@@ -223,7 +223,7 @@ def _listing(items: list[dict]) -> str:
         when = datetime.fromtimestamp(item["ts"]).strftime("%d/%m %H:%M")
         body = item["body"] if item["content_available"] else "(conteúdo não disponível na notificação)"
         group = f" [{item['title']}]" if item.get("title") and item["title"] != item["sender"] else ""
-        lines.append(f"{when} — {item['sender']}{group}: {body}")
+        lines.append(f"{when} - {item['sender']}{group}: {body}")
     return "\n".join(lines)
 
 

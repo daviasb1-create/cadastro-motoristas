@@ -263,7 +263,7 @@ def _svc(services) -> OutlookService:
 
 
 def _mail_listing(mails: list[Mail]) -> str:
-    return "\n".join(f"{i + 1}. {m.received:%d/%m %H:%M} — {m.sender_name} — {m.subject}" for i, m in enumerate(mails))
+    return "\n".join(f"{i + 1}. {m.received:%d/%m %H:%M} - {m.sender_name} - {m.subject}" for i, m in enumerate(mails))
 
 
 @action("email_unread", "Informa quantos e-mails não lidos existem e de quem são os mais recentes.")
@@ -493,7 +493,7 @@ def calendar(services, params):
         return ActionResult(f"Nenhum compromisso {label}.")
     now = datetime.now()
     upcoming = [e for e in events if e["_end"] > now] if label == "hoje" else events
-    lines = [f"{'Dia inteiro' if e.get('isAllDay') else e['_start'].strftime('%H:%M')} — {e.get('subject')}" for e in events]
+    lines = [f"{'Dia inteiro' if e.get('isAllDay') else e['_start'].strftime('%H:%M')} - {e.get('subject')}" for e in events]
     if not upcoming:
         return ActionResult(f"Os compromissos de {label} já terminaram.", display="\n".join(lines))
     spoken = "; ".join(
