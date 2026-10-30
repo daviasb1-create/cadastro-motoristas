@@ -168,7 +168,8 @@ class SettingsDialog(QDialog):
         w, f = self._form()
         f.addRow("Perfil de voz:", self._combo("voice.profile", [("JARVIS (masculina)", "jarvis"), ("FRIDAY (feminina)", "friday")]))
         f.addRow("Motor de voz:", self._combo("voice.engine", [
-            ("Automático (neural online, com reserva offline)", "auto"), ("Neural Microsoft Edge (online, gratuito)", "edge"),
+            ("Automático (Fish Audio, com reservas)", "auto"), ("Fish Audio (voz escolhida)", "fish"),
+            ("Neural Microsoft Edge (online, gratuito)", "edge"),
             ("Azure AI Speech (oficial, chave própria)", "azure"), ("Vozes do Windows (offline)", "sapi")]))
         f.addRow("Velocidade (%):", self._slider("voice.rate", -50, 50))
         f.addRow("Volume da voz:", self._slider("voice.volume", 10, 100))
@@ -178,6 +179,24 @@ class SettingsDialog(QDialog):
         f.addRow("Tom JARVIS:", self._line("profiles.jarvis.edge_pitch", "-4Hz"))
         f.addRow("Voz neural FRIDAY:", self._line("profiles.friday.edge_voice", "pt-BR-FranciscaNeural ou pt-BR-ThalitaMultilingualNeural"))
         f.addRow("Tom FRIDAY:", self._line("profiles.friday.edge_pitch", "+0Hz"))
+        f.addRow("", QLabel("FISH AUDIO"))
+        import os
+
+        from ..audio.fish import ENV_KEY
+
+        key_status = "encontrada no arquivo .env" if os.environ.get(ENV_KEY) else f"NÃO encontrada: crie o arquivo .env com {ENV_KEY}=sua_chave"
+        f.addRow("Chave da API:", QLabel(key_status))
+        f.addRow("ID da voz JARVIS:", self._line("profiles.jarvis.fish_reference_id", "Voice Reference ID"))
+        f.addRow("ID da voz FRIDAY:", self._line("profiles.friday.fish_reference_id", "vazio = voz neural da Friday"))
+        f.addRow("Modelo:", self._line("fish.model", "s2.1-pro"))
+        f.addRow("Latência:", self._combo("fish.latency", [("Equilibrada (mais rápida)", "balanced"),
+                                                            ("Normal (mais qualidade)", "normal")]))
+        f.addRow("Volume na geração (dB):", self._slider("fish.volume_db", -20, 20))
+        fish_test = QPushButton("Testar voz Fish Audio")
+        fish_test.clicked.connect(lambda: self._test_fish(fish_test))
+        f.addRow("", fish_test)
+        f.addRow("", self._note("A velocidade e o volume acima valem também para a Fish Audio. Se a Fish Audio "
+                                "falhar (sem internet, sem créditos), o JARVIS fala na hora com a voz reserva."))
         f.addRow("Região Azure:", self._line("voice.azure_region", "brazilsouth"))
         f.addRow("Chave Azure Speech:", self._secret("azure_speech_key"))
         test = QPushButton("Testar voz")
@@ -187,6 +206,20 @@ class SettingsDialog(QDialog):
                                 "neurais em português com estilo próximo. A voz neural online envia apenas o texto "
                                 "da resposta para síntese; a reserva offline usa as vozes instaladas no Windows."))
         return w
+
+    def _test_fish(self, button: QPushButton) -> None:
+        self._save(close=False)
+        from ..audio.fish_check import check_fish_voice
+
+        speaker = self.app.speaker
+
+        def done(report):
+            QMessageBox.information(self, "Fish Audio", report.text())
+            if report.ok and speaker is not None:
+                speaker.play_clip(report.clip)
+
+        self._busy(button, lambda: check_fish_voice(self.settings, profile=self.settings.get("voice.profile", "jarvis")),
+                   done, "Testando…")
 
     def _test_voice(self) -> None:
         self._save(close=False)

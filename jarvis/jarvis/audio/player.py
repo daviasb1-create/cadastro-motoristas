@@ -69,6 +69,45 @@ class Player:
             finally:
                 self.playing = False
 
+    def play_stream(self, chunks, rate: int, volume: float | None = None) -> bool:
+        """Toca áudio que ainda está chegando (streaming). Retorna False se interrompido."""
+        import sounddevice as sd
+
+        from .capture import resample
+
+        if volume is None:
+            volume = self.settings.get("voice.volume", 85) / 100.0
+        gain = max(0.0, min(1.0, volume))
+        device = self.settings.get("audio.output_device")
+        with self._lock:
+            self._stop.clear()
+            self.playing = True
+            try:
+                out_rate = rate
+                try:
+                    stream = sd.OutputStream(samplerate=rate, channels=1, dtype="int16", device=device, blocksize=1024)
+                except sd.PortAudioError:
+                    out_rate = int(sd.query_devices(device, "output")["default_samplerate"])
+                    stream = sd.OutputStream(samplerate=out_rate, channels=1, dtype="int16", device=device,
+                                             blocksize=1024)
+                with stream:
+                    for chunk in chunks:
+                        if self._stop.is_set():
+                            return False
+                        data = (chunk.astype(np.float32) * gain).astype(np.int16)
+                        if out_rate != rate:
+                            data = resample(data, rate, out_rate)
+                        for start in range(0, len(data), 2048):
+                            if self._stop.is_set():
+                                return False
+                            stream.write(data[start:start + 2048].reshape(-1, 1))
+                return not self._stop.is_set()
+            except Exception:  # noqa: BLE001
+                log.exception("Falha ao reproduzir áudio em streaming")
+                return False
+            finally:
+                self.playing = False
+
     def _write(self, sd, samples: np.ndarray, rate: int, device) -> bool:
         block = 1024
         with sd.OutputStream(samplerate=rate, channels=1, dtype="int16", device=device, blocksize=block) as stream:

@@ -198,11 +198,16 @@ def test_music_really_plays_file_with_ducking_and_stop(services, tmp_path, monke
     services.settings.set("music.volume", 50)
     player = music_mod.MusicPlayer(services.settings, services.bus)
     assert player.play() is None
-    time.sleep(0.3)
+    deadline = time.time() + 3
+    while len(written) < 8 and time.time() < deadline:
+        time.sleep(0.05)
     assert player.playing and written and written[0] < written[-1]  # entrada suave
     peak = max(written)
     services.bus.publish("state", state="listening")
-    time.sleep(0.15)
+    count = len(written)
+    deadline = time.time() + 3
+    while len(written) < count + 8 and time.time() < deadline:
+        time.sleep(0.05)
     assert written[-1] < peak * 0.3  # abaixou enquanto o assistente escuta
     player.stop()
     assert not player.playing and written[-1] < peak * 0.1  # saída suave até o silêncio

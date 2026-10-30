@@ -165,6 +165,10 @@ class JarvisApp:
         return self.assistant.handle(text, source=source, confidence=confidence)
 
     def submit_text(self, text: str) -> None:
+        # uma nova interação interrompe a fala anterior
+        if self.speaker is not None:
+            self.speaker.stop()
+
         def work() -> None:
             reply = self.assistant.handle(text, source="text")
             if reply.speak and reply.text:
@@ -418,6 +422,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     setup_logging("DEBUG" if args.debug else "INFO", console=args.cli or args.debug)
+    from .core.envfile import load_env
+
+    load_env()  # chaves de API do arquivo .env (ex.: FISH_AUDIO_API_KEY)
     from .platform.windows import SingleInstance
 
     instance = SingleInstance()

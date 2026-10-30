@@ -80,6 +80,16 @@ Ele passa a abrir sozinho, escondido na bandeja (perto do relógio).
 
 ## Parte 2: integrações (faça só as que for usar)
 
+### Voz do JARVIS pela Fish Audio (cerca de 2 minutos)
+
+1. Em https://fish.audio, entre na sua conta > **API Keys** > crie uma chave e copie.
+2. Na pasta do JARVIS, abra o arquivo **.env** com o Bloco de Notas (botão direito > Abrir com > Bloco de Notas).
+3. Deixe a linha assim, com a sua chave: `FISH_AUDIO_API_KEY=sua_chave_aqui` > Salvar.
+4. Dê dois cliques em **test_fish_voice.bat**: deve aparecer "TESTE OK" e você vai ouvir a voz.
+5. Reinicie o JARVIS. Pronto: todas as respostas passam a usar essa voz.
+
+O ID da voz (`a5b93aeddcc948c19ea04f0afe9d178c`) e o modelo (`s2.1-pro`) já vêm configurados.
+
 ### Outlook e Excel Online (cerca de 10 minutos)
 
 Você usa o Outlook web, o que funciona normalmente.

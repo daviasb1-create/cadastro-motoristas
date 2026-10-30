@@ -50,7 +50,13 @@ if ($Optional) {
 & $venvPy scripts\download_models.py
 if ($LASTEXITCODE -ne 0) { throw "Falha ao baixar o modelo de voz" }
 
-# 4. Ícone e atalhos
+# 4. Arquivo .env para chaves de API (criado vazio a partir do exemplo)
+if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
+    Copy-Item ".env.example" ".env"
+    Write-Host "Arquivo .env criado. Abra-o no Bloco de Notas e cole sua chave da Fish Audio em FISH_AUDIO_API_KEY."
+}
+
+# 5. Ícone e atalhos
 & $venvPy scripts\make_icon.py | Out-Null
 if (-not $NoShortcuts) {
     $shell = New-Object -ComObject WScript.Shell
@@ -70,7 +76,7 @@ if (-not $NoShortcuts) {
     Write-Host "Atalhos criados no Menu Iniciar e na Área de Trabalho."
 }
 
-# 5. Inicialização com o Windows (HKCU, sem administrador)
+# 6. Inicialização com o Windows (HKCU, sem administrador)
 if ($Autostart) {
     $cmd = "`"$Root\.venv\Scripts\pythonw.exe`" `"$Root\run_jarvis.pyw`" --minimized"
     Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "JarvisAssistente" -Value $cmd

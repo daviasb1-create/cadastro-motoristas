@@ -201,13 +201,20 @@ class SapiEngine:
 
 
 class TTSManager:
-    def __init__(self, settings, secrets) -> None:
+    def __init__(self, settings, secrets, bus=None, fish_transport=None) -> None:
+        from .fish import FishAudioEngine
+
         self.settings = settings
-        self.engines = {"edge": EdgeEngine(), "azure": AzureEngine(secrets, settings), "sapi": SapiEngine()}
+        self.bus = bus
+        self.fish = FishAudioEngine(settings, transport=fish_transport)
+        self.engines = {"fish": self.fish, "edge": EdgeEngine(), "azure": AzureEngine(secrets, settings),
+                        "sapi": SapiEngine()}
         self._cache_dir = paths.cache_dir() / "tts"
         self._cache_dir.mkdir(parents=True, exist_ok=True)
         self.last_engine = ""
         self._edge_failed_at = 0.0
+        self._fish_blocked_until = 0.0
+        self.fish_last_error = ""
 
     def params(self, profile: str | None = None) -> VoiceParams:
         profile = profile or self.settings.get("voice.profile", "jarvis")
@@ -216,19 +223,71 @@ class TTSManager:
                            pitch=prof.get("edge_pitch", "+0Hz"), rate=int(self.settings.get("voice.rate", 0)),
                            sapi_hint=prof.get("sapi_hint", "Daniel"))
 
+    # --------------------------------------------------------- Fish Audio
+    def fish_ready(self, profile: str | None = None) -> bool:
+        import time
+
+        profile = profile or self.settings.get("voice.profile", "jarvis")
+        return (self.settings.get("voice.engine", "auto") in ("auto", "fish") and self.fish.configured(profile)
+                and time.time() >= self._fish_blocked_until)
+
+    def fish_failed(self, error: Exception) -> None:
+        """Pausa a Fish Audio por um tempo e avisa uma vez; as falas seguem pela voz reserva."""
+        import time
+
+        status = getattr(error, "status", 0)
+        pause = 600 if status in (401, 402, 403, 404, 422) else int(self.settings.get("fish.retry_seconds", 60))
+        self._fish_blocked_until = time.time() + pause
+        message = str(error)
+        log.warning("Fish Audio indisponível: %s", message)
+        if message != self.fish_last_error and self.bus is not None:
+            self.bus.publish("activity", text=f"Voz Fish Audio indisponível ({message}). Usando a voz reserva.",
+                             kind="error")
+            self.bus.publish("connection", service="voice", status="error", detail=message[:80])
+        self.fish_last_error = message
+
+    def fish_ok(self) -> None:
+        if self.fish_last_error and self.bus is not None:
+            self.bus.publish("connection", service="voice", status="ok", detail="Fish Audio")
+        self.fish_last_error = ""
+
+    def cached_clip(self, engine: str, text: str, profile: str | None = None) -> AudioClip | None:
+        path = self._cache_path(engine, text, self.params(profile))
+        if path.exists():
+            try:
+                return AudioClip.from_wav(path.read_bytes())
+            except (OSError, ValueError, EOFError):
+                path.unlink(missing_ok=True)
+        return None
+
+    def save_cache(self, engine: str, text: str, clip: AudioClip, profile: str | None = None) -> None:
+        if len(text) > 160:
+            return
+        try:
+            self._cache_path(engine, text, self.params(profile)).write_bytes(clip.to_wav())
+        except OSError:
+            pass
+
     def order(self) -> list[str]:
         choice = self.settings.get("voice.engine", "auto")
+        fish = ["fish"] if self.fish_ready() else []
+        if choice == "fish":
+            return fish + ["edge", "sapi"]
         if choice == "auto":
             import time
 
             # Depois de uma falha da voz online, usa a local por 2 minutos (sem atrasar respostas)
             if time.time() - self._edge_failed_at < 120:
-                return ["sapi", "edge"]
-            return ["edge", "sapi"]
+                return fish + ["sapi", "edge"]
+            return fish + ["edge", "sapi"]
         return [choice] + [e for e in ("edge", "sapi") if e != choice]
 
     def _cache_path(self, engine: str, text: str, p: VoiceParams) -> Path:
-        digest = hashlib.sha1(f"{engine}|{p.voice}|{p.pitch}|{p.rate}|{p.sapi_hint}|{text}".encode()).hexdigest()
+        extra = ""
+        if engine == "fish":
+            extra = (f"|{self.fish.reference_id(p.profile)}|{self.settings.get('fish.model', '')}"
+                     f"|{self.settings.get('fish.volume_db', 0)}")
+        digest = hashlib.sha1(f"{engine}|{p.voice}|{p.pitch}|{p.rate}|{p.sapi_hint}{extra}|{text}".encode()).hexdigest()
         return self._cache_dir / f"{digest}.wav"
 
     def synthesize(self, text: str, profile: str | None = None, cache: bool | None = None) -> AudioClip:
@@ -251,12 +310,16 @@ class TTSManager:
                 errors.append(f"{name}: {exc}")
                 if name == "edge":
                     self._edge_failed_at = time.time()
+                if name == "fish":
+                    self.fish_failed(exc)
                 continue
             except Exception as exc:  # noqa: BLE001
                 log.exception("Falha no motor de voz %s", name)
                 errors.append(f"{name}: {exc}")
                 continue
             self.last_engine = name
+            if name == "fish":
+                self.fish_ok()
             if use_cache:
                 try:
                     path.write_bytes(clip.to_wav())

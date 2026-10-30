@@ -7,7 +7,7 @@ Assistente de voz em português do Brasil que fica em segundo plano, atende ao c
 | Ativação por voz | Detecção **local** da palavra "Jarvis" (Vosk; Porcupine opcional). O áudio não sai do PC. |
 | Entende comandos | Reconhecimento de fala local em pt-BR + interpretador próprio de comandos (sem custo, sem internet). |
 | Conversa livre | IA opcional e configurável: Claude (Anthropic API) ou Ollama (local e gratuito). |
-| Responde falando | Perfis **JARVIS** (masculino) e **FRIDAY** (feminino) com vozes neurais pt-BR; reserva offline com vozes do Windows. |
+| Responde falando | Voz do JARVIS pela **Fish Audio** (voz escolhida, streaming), perfil **FRIDAY** feminino; reservas automáticas (neural Microsoft e vozes do Windows). |
 | Controla o Windows | Abre/fecha programas e jogos (Menu Iniciar, Microsoft Store, Steam), pastas, janelas, volume, lembretes, arquivos. |
 | Outlook | Não lidos, resumos, pesquisa, anexos, responder, encaminhar, arquivar, apagar, marcar como lido; criar, remarcar e cancelar compromissos. Tudo que envia ou apaga pede confirmação. |
 | Excel Online | Descobre planilhas, pendências, atrasados, busca, resumos, inconsistências; edição só com prévia, confirmação e auditoria. |
@@ -55,4 +55,4 @@ O microfone é processado no seu PC; só depois de chamado o comando vira texto,
 ```bat
 run_tests.bat
 ```
-143 testes automatizados cobrem interpretação de comandos, confirmações, Excel, Outlook/Graph, WhatsApp, notificações, ciclo de voz, IA e interface.
+156 testes automatizados cobrem interpretação de comandos, confirmações, Excel, Outlook/Graph, WhatsApp, notificações, ciclo de voz, IA e interface.

@@ -38,7 +38,7 @@ Todos os módulos conversam por um **barramento de eventos**; a interface só as
 | Palavra de ativação | Vosk com gramática restrita + calibração | Porcupine, openWakeWord | Gratuito e sem conta; "Jarvis" isolado (openWakeWord só tem "hey jarvis"). Porcupine fica como opção mais precisa |
 | Reconhecimento de fala | Vosk pt-BR (local, streaming) | Whisper local, nuvem | Latência baixa e privacidade; o resultado sai assim que a fala termina. Whisper opcional para precisão |
 | Interpretação | Regras pt-BR locais + IA opcional | Só IA | Comandos frequentes sem custo, sem internet e em milissegundos |
-| Síntese de voz | edge-tts (neural) com reserva SAPI; Azure opcional | Piper, só SAPI | Melhor qualidade pt-BR gratuita; reserva offline garante resposta |
+| Síntese de voz | Fish Audio (voz escolhida, streaming WAV) com reservas edge-tts e SAPI; Azure opcional | Piper, só SAPI | Melhor qualidade pt-BR gratuita; reserva offline garante resposta |
 | Microsoft 365 | Graph REST + MSAL (PKCE) + msal-extensions (DPAPI) | COM do Outlook desktop, IMAP | Oficial, funciona com Outlook/Excel **online**, permissões mínimas por escopo |
 | WhatsApp | Leitura das notificações do Windows + links oficiais | API Cloud da Meta, automação do WhatsApp Web | Único método gratuito, local e dentro dos termos para a conta comum |
 | Segredos | Gerenciador de Credenciais (keyring) / DPAPI | Arquivo de configuração | Nada sensível em texto simples |
@@ -83,7 +83,7 @@ jarvis/
 │   ├── gaming/                modo jogo, atalhos globais, controle Xbox
 │   ├── platform/              APIs nativas do Windows, atalhos .lnk, Steam
 │   └── ui/                    janela, núcleo animado, bandeja, configurações
-├── tests/                     143 testes automatizados (pytest)
+├── tests/                     156 testes automatizados (pytest)
 ├── scripts/                   instalação, modelo de voz, ícone, executável
 ├── installer/                 instalador Inno Setup
 ├── config/                    exemplo de configuração sem segredos

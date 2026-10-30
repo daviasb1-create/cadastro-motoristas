@@ -29,7 +29,7 @@ DEFAULTS: dict[str, Any] = {
     },
     "voice": {
         "profile": "jarvis",  # jarvis | friday
-        "engine": "auto",  # auto | edge | azure | sapi
+        "engine": "auto",  # auto (Fish Audio quando configurada, depois reservas) | fish | edge | azure | sapi
         "rate": 0,  # -50..+50 (%)
         "volume": 85,  # 0..100 volume próprio do assistente
         "spoken_replies": True,
@@ -40,6 +40,7 @@ DEFAULTS: dict[str, Any] = {
     "profiles": {
         "jarvis": {
             "label": "JARVIS",
+            "fish_reference_id": "a5b93aeddcc948c19ea04f0afe9d178c",  # voz escolhida na Fish Audio
             "edge_voice": "pt-BR-AntonioNeural",
             "edge_pitch": "-4Hz",
             "azure_voice": "pt-BR-AntonioNeural",
@@ -48,6 +49,7 @@ DEFAULTS: dict[str, Any] = {
         },
         "friday": {
             "label": "FRIDAY",
+            "fish_reference_id": "",  # vazio = usa a voz neural da Friday; cole um ID da Fish Audio para trocar
             "edge_voice": "pt-BR-FranciscaNeural",
             "edge_pitch": "+0Hz",
             "azure_voice": "pt-BR-FranciscaNeural",
@@ -177,6 +179,13 @@ DEFAULTS: dict[str, Any] = {
         "history_enabled": True,
         "keep_days": 30,
         "facts": [],
+    },
+    "fish": {
+        "enabled": True,
+        "model": "s2.1-pro",
+        "latency": "balanced",  # balanced (mais rápido) | normal (mais qualidade)
+        "volume_db": 0,  # ajuste de volume na geração (-20 a +20 dB); o volume local fica em voice.volume
+        "retry_seconds": 60,  # após falha temporária, usa a voz reserva por este tempo
     },
     "music": {
         "file": "",  # arquivo de música do próprio usuário (MP3/WAV/FLAC/OGG)

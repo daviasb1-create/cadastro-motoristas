@@ -152,7 +152,45 @@ Com IA ativa, vão para o provedor: o texto do pedido, o contexto recente e, nos
 
 ---
 
-## 4. Vozes
+## 4. Voz do JARVIS pela Fish Audio
+
+O JARVIS fala **todas** as respostas com a voz escolhida na Fish Audio: respostas da IA, comandos, avisos de notificações e o "Às suas ordens".
+
+| Configuração | Valor |
+|---|---|
+| Provedor | Fish Audio API (`POST https://api.fish.audio/v1/tts`) |
+| ID da voz (JARVIS) | `a5b93aeddcc948c19ea04f0afe9d178c` (já vem configurado) |
+| Modelo | `s2.1-pro` |
+| Idioma | português do Brasil (definido pelo texto e pela voz) |
+| Formato | WAV em streaming (o áudio começa a tocar enquanto ainda está chegando) |
+
+### Configurar (2 minutos)
+
+1. Em https://fish.audio, entre na sua conta > **API Keys** > crie uma chave.
+2. Na pasta do JARVIS, abra o arquivo **`.env`** no Bloco de Notas (o instalador já cria; se não existir, copie `.env.example` para `.env`).
+3. Cole a chave assim, sem aspas e sem espaços:
+   ```
+   FISH_AUDIO_API_KEY=sua_chave_aqui
+   ```
+4. Salve e reinicie o JARVIS.
+5. Teste: dois cliques em **`test_fish_voice.bat`**. Ele confere a chave, o ID da voz e o modelo, mostra o tempo até o primeiro áudio, salva `fish_teste.wav` e toca. Ou: **Configurações > Voz > Testar voz Fish Audio**.
+
+A chave fica só no arquivo `.env` (que não vai para o GitHub). Ela não aparece na tela nem nos registros.
+
+### Como funciona no dia a dia
+
+- **Velocidade e volume:** Configurações > Voz. "Velocidade" e "Volume da voz" valem para a Fish Audio; "Volume na geração (dB)" ajusta o volume no próprio áudio gerado. Por voz: "fala mais devagar", "fala mais alto".
+- **Interrupção:** chamar "Jarvis", apertar `Ctrl+Alt+S`, o botão Parar ou digitar um novo comando corta a fala na hora e para o download do áudio.
+- **Sem repetição:** a mesma frase pedida duas vezes seguidas (em até 3 segundos, ou já na fila) é falada uma vez só.
+- **Cache:** frases curtas (até 160 caracteres, como "Às suas ordens") são guardadas após a primeira vez e tocam na hora, sem gastar créditos de novo.
+- **Reserva:** se a Fish Audio falhar antes de começar a falar (sem internet, sem créditos, chave inválida, limite de uso), o JARVIS responde na hora com a voz reserva (neural da Microsoft ou a do Windows) e avisa em Atividades. Falhas temporárias: tenta a Fish Audio de novo após 60 segundos. Problemas de conta (chave, créditos, ID): após 10 minutos.
+- **Perfil FRIDAY:** usa a voz neural feminina, a menos que você cole um ID da Fish Audio no campo "ID da voz FRIDAY".
+
+### Custo
+
+A Fish Audio cobra pelo texto convertido em fala, conforme o plano da sua conta (confira em fish.audio). O cache das frases curtas reduz o gasto com respostas repetidas.
+
+## 5. Vozes reserva
 
 | Motor | Qualidade | Requisito |
 |---|---|---|
@@ -166,7 +204,7 @@ As vozes dos filmes são de atores reais e não podem ser reproduzidas legalment
 
 ---
 
-## 5. Spotify
+## 6. Spotify
 
 | Nível | Requisito | O que funciona |
 |---|---|---|
@@ -190,7 +228,7 @@ O JARVIS guarda apenas o token de renovação, no Gerenciador de Credenciais do 
 
 Para tocar, o app do Spotify precisa estar aberto em algum aparelho (PC, celular, caixa). Se nenhum estiver ativo, o JARVIS abre o Spotify do PC e toca nele.
 
-## 6. Porcupine (opcional)
+## 7. Porcupine (opcional)
 
 Detecção da palavra "jarvis" mais precisa e com menos falsos disparos.
 

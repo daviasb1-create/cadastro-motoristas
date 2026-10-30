@@ -128,7 +128,7 @@ A música abaixa sozinha enquanto o JARVIS escuta (para não atrapalhar o reconh
 | "adiciona essa música na playlist Treino" / "coloca Thunderstruck na playlist Treino" | Adiciona à sua playlist |
 | "toca a playlist Treino" | Toca as suas playlists primeiro |
 
-Configuração: [INTEGRACOES.md, seção Spotify](INTEGRACOES.md#5-spotify).
+Configuração: [INTEGRACOES.md, seção Spotify](INTEGRACOES.md#6-spotify).
 
 ## Perguntas livres (com IA ativa)
 
