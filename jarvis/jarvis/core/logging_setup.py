@@ -11,6 +11,8 @@ from . import paths
 _SECRET_PATTERNS = [
     re.compile(r"(Bearer\s+)[A-Za-z0-9\-\._~\+/]+=*", re.I),
     re.compile(r"(sk-ant-[a-z0-9]*-)[A-Za-z0-9_\-]+", re.I),
+    re.compile(r"(sk-[a-z]+-)[A-Za-z0-9_\-]{8,}", re.I),  # outras chaves no formato sk-<serviço>-... (ex.: Fish Audio)
+    re.compile(r"(FISH_AUDIO_API_KEY\s*[=:]\s*)\S+", re.I),
     re.compile(r"((?:access|refresh|id)_token[\"'=:\s]+)[^\s\"'&,]+", re.I),
 ]
 

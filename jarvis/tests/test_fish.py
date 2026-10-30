@@ -258,3 +258,14 @@ def test_env_file_loading(tmp_path, monkeypatch):
     import os
 
     assert os.environ["FISH_AUDIO_API_KEY"] == "segredo"
+
+
+def test_fish_key_is_redacted_from_logs():
+    import logging
+
+    from jarvis.core.logging_setup import RedactingFilter
+
+    for message in ("chave sk-fish-ABCdef123456_xyz-987 recusada", "FISH_AUDIO_API_KEY=ABCdef123456"):
+        record = logging.LogRecord("x", 20, "", 0, message, (), None)
+        RedactingFilter().filter(record)
+        assert "ABCdef123456" not in record.getMessage()
