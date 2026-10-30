@@ -46,7 +46,7 @@ class NotificationCenter:
     # ------------------------------------------------------------- entrada
     def add(self, source: str, sender: str = "", title: str = "", body: str = "", important: bool | None = None,
             content_available: bool = True, key: str | None = None, link: str | None = None,
-            app: str = "", extra: dict | None = None, ts: float | None = None) -> dict | None:
+            app: str = "", extra: dict | None = None, ts: float | None = None, announce: bool = True) -> dict | None:
         if not self.settings.get(f"notifications.sources.{source}", True):
             return None
         ts = ts or time.time()
@@ -67,11 +67,13 @@ class NotificationCenter:
             if "UNIQUE" in str(exc):
                 return None
             raise
-        item = {"id": cur.lastrowid, "key": key, "ts": ts, "source": source, "app": app, "sender": sender,
+        item = {"id": cur.lastrowid, "key": key, "ts": ts, "source": source,
+                "app": app or SOURCE_LABEL.get(source, source), "sender": sender,
                 "title": title, "body": body, "important": important, "content_available": content_available,
                 "link": link}
         self.bus.publish("notification", **item)
-        self._queue_announcement(item)
+        if announce:
+            self._queue_announcement(item)
         return item
 
     def _is_duplicate(self, source: str, sender: str, body: str, ts: float) -> bool:

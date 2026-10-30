@@ -128,6 +128,8 @@ class WhatsAppService:
         return self.storage.query(sql + " ORDER BY ts DESC", (since,))
 
     def unread_summary(self, short: bool = False) -> str:
+        if self.status != "ok":
+            return "Não consigo ler as notificações do WhatsApp neste momento."
         items = self.recent(unread_only=True)
         if not items:
             return "Nenhuma mensagem nova no WhatsApp." if not short else "WhatsApp sem mensagens novas."
@@ -204,9 +206,12 @@ def _join(items: list[str]) -> str:
 
 
 # ===================================================================== ações
-def _svc(services) -> WhatsAppService:
+def _svc(services, reading: bool = False) -> WhatsAppService:
     if services.whatsapp is None:
         raise ServiceUnavailable("A integração com o WhatsApp está desativada.")
+    if reading and services.whatsapp.status != "ok":
+        raise ServiceUnavailable("Não consigo ler as notificações do WhatsApp agora. Verifique se ele está aberto no "
+                                 "computador e com notificações ativas (veja Solução de problemas).")
     return services.whatsapp
 
 
@@ -224,7 +229,7 @@ def _listing(items: list[dict]) -> str:
 
 @action("whatsapp_unread", "Informa se chegaram mensagens novas no WhatsApp e de quem.")
 def whatsapp_unread(services, params):
-    svc = _svc(services)
+    svc = _svc(services, reading=True)
     items = svc.recent(unread_only=True)
     services.context.remember(whatsapp=[{"sender": i["sender"], "body": i["body"][:200]} for i in items[:10]])
     return ActionResult(svc.unread_summary(), display=_listing(items) or None)
@@ -233,7 +238,7 @@ def whatsapp_unread(services, params):
 @action("whatsapp_senders", "Lista quem mandou mensagem no WhatsApp (hoje ou nas últimas 24 h).",
         props(today={"type": "boolean"}))
 def whatsapp_senders(services, params):
-    svc = _svc(services)
+    svc = _svc(services, reading=True)
     since = None
     if params.get("today"):
         from datetime import datetime
@@ -252,7 +257,7 @@ def whatsapp_senders(services, params):
 
 @action("whatsapp_summary", "Resume as mensagens não lidas do WhatsApp com base nas notificações recebidas.")
 def whatsapp_summary(services, params):
-    svc = _svc(services)
+    svc = _svc(services, reading=True)
     items = svc.recent(unread_only=True)
     if not items:
         return ActionResult("Nenhuma mensagem nova no WhatsApp.")

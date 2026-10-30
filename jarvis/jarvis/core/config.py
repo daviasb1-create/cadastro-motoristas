@@ -111,6 +111,7 @@ DEFAULTS: dict[str, Any] = {
         "ollama_url": "http://localhost:11434",
         "ollama_model": "llama3.1",
         "timeout_seconds": 30,
+        "send_content": True,  # permite enviar textos de e-mails/mensagens à IA para resumir
         "max_history_turns": 20,
     },
     "apps": {

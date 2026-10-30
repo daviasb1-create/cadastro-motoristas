@@ -23,13 +23,13 @@ def spoken_date(now: datetime) -> str:
 @action("time", "Informa a hora atual.")
 def time_now(services, params):
     now = datetime.now()
-    return ActionResult(f"São {spoken_time(now)}.", display=now.strftime("%H:%M"))
+    return ActionResult(f"São {spoken_time(now)}.")
 
 
 @action("date", "Informa a data de hoje.")
 def date_today(services, params):
     now = datetime.now()
-    return ActionResult(f"Hoje é {spoken_date(now)}.", display=now.strftime("%d/%m/%Y"))
+    return ActionResult(f"Hoje é {spoken_date(now)}.")
 
 
 @action("battery", "Informa o nível da bateria do computador, se houver bateria.")
