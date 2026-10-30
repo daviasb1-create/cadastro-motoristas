@@ -164,7 +164,29 @@ As vozes dos filmes são de atores reais e não podem ser reproduzidas legalment
 
 ---
 
-## 5. Porcupine (opcional)
+## 5. Spotify
+
+| Nível | Requisito | O que funciona |
+|---|---|---|
+| **Básico** | Nenhum (qualquer conta, até gratuita) | "pausa", "continua", "próxima", "música anterior" pelas teclas de mídia do Windows; "toca X" abre a busca no app do Spotify |
+| **Completo** | Spotify **Premium** + app gratuito no Spotify for Developers | "toca Back in Black", "toca Coldplay", "coloca a playlist de rock", "quero ouvir o álbum Thriller" tocam na hora; "que música é essa?", volume e aleatório |
+
+Regras atuais do Spotify (fevereiro de 2026): o dono do app em modo de desenvolvimento precisa ter Premium, cada pessoa pode ter um Client ID, com até 5 usuários autorizados, e controlar a reprodução exige Premium.
+
+### Conectar (nível completo, ~5 minutos)
+
+1. Acesse <https://developer.spotify.com/dashboard> com sua conta Spotify e clique em **Create app**.
+2. Nome: `JARVIS`. Descrição: `Assistente pessoal`.
+3. **Redirect URI**: `http://127.0.0.1:8888/callback` (exatamente assim; o Spotify não aceita `localhost`).
+4. Em *Which API/SDKs are you planning to use?*, marque **Web API**. Salve.
+5. Copie o **Client ID** (não é necessário o Client Secret: o login usa PKCE).
+6. No JARVIS: **Configurações > Música > Client ID do app Spotify**, cole e clique em **Conectar Spotify**. Autorize na página do Spotify.
+
+O JARVIS guarda apenas o token de renovação, no Gerenciador de Credenciais do Windows. Desconectar apaga o token.
+
+Para tocar, o app do Spotify precisa estar aberto em algum aparelho (PC, celular, caixa). Se nenhum estiver ativo, o JARVIS abre o Spotify do PC e toca nele.
+
+## 6. Porcupine (opcional)
 
 Detecção da palavra "jarvis" mais precisa e com menos falsos disparos.
 

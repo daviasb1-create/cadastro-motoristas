@@ -98,11 +98,49 @@ def _volume_rule(text: str) -> Intent | None:
     return None
 
 
+BACKGROUND_MUSIC = {"musica", "a musica", "minha musica", "trilha", "a trilha", "minha trilha", "trilha sonora",
+                    "a trilha sonora", "musica de fundo", "a musica de fundo", "som de fundo", "a trilha do homem de ferro",
+                    "a musica do jarvis", "a trilha do jarvis"}
+PLAY_RE = re.compile(r"^(?:toca|toque|tocar|coloca|coloque|bota|bote|poe|solta|quero ouvir|quero escutar|ouvir|"
+                     r"escutar|play|reproduz|reproduza|me toca)\s+(?P<rest>.+)$")
+
+
 def _music_rule(text: str) -> Intent | None:
+    """Música de fundo (arquivo do usuário) e Spotify."""
     t = text
     if re.search(r"\bmodo (homem de ferro|iron man|tony stark|stark)\b|\b(cheguei|chegamos) (em casa|na oficina)\b|\bhora do show\b", t):
         return Intent("music_play")
-    if not re.search(r"\b(musica|trilha|trilha sonora|som de fundo)\b", t):
+    # controles de reprodução (Spotify ou qualquer player)
+    if re.fullmatch(r"(pausa|pausar|pause|da (um )?pause)( a musica| o spotify| a musica do spotify)?", t):
+        return Intent("spotify_pause")
+    if re.fullmatch(r"(continua|continuar|continue|despausa|retoma|volta a tocar|solta o som)( a musica| o spotify)?", t):
+        return Intent("spotify_resume")
+    if re.search(r"\b(proxima|pula|pular|passa|avanca)\b.*\b(musica|faixa|essa)\b|^(proxima|pula|pula essa|passa essa)$", t):
+        return Intent("spotify_next")
+    if re.search(r"\b(musica|faixa) anterior\b|\bvolta (a|para a|pra) (musica|faixa)( anterior)?\b", t):
+        return Intent("spotify_previous")
+    if re.search(r"\b(que|qual) (musica|som) (e essa|e esse|ta tocando|esta tocando)\b|\bo que (ta|esta) tocando\b", t):
+        return Intent("spotify_now_playing")
+    if re.search(r"\b(aleatorio|embaralha|shuffle)\b", t):
+        return Intent("spotify_shuffle", {"active": not re.search(r"\b(desliga|desativa|tira|sem)\b", t)})
+    m = PLAY_RE.match(t)
+    if m:
+        rest = re.sub(r"\s+(no|pelo|do) spotify$", "", m.group("rest")).strip()
+        if rest in BACKGROUND_MUSIC:
+            return Intent("music_play")
+        if rest in ("spotify", "o spotify", "musica no spotify", "alguma coisa", "algo", "alguma musica"):
+            return Intent("spotify_resume")
+        kind = "track"
+        for pattern, value in ((r"^(a |uma )?playlist\s+(de\s+|do\s+|da\s+)?", "playlist"),
+                               (r"^(o |um )?album\s+(de\s+|do\s+|da\s+)?", "album"),
+                               (r"^(o |a )?(artista|banda|cantor|cantora)\s+", "artist"),
+                               (r"^(umas? |as |algumas? )?(musicas?|sons?|cancoes)\s+(de|do|da|dos|das)\s+", "artist")):
+            if re.search(pattern, rest):
+                rest, kind = re.sub(pattern, "", rest), value
+                break
+        rest = re.sub(r"^(a musica|musica|a cancao|o som)\s+", "", rest)
+        return Intent("spotify_play", {"query": rest, "kind": kind})
+    if not re.search(r"\b(musica|trilha|trilha sonora|som de fundo|spotify)\b", t):
         return None
     if re.search(r"\b(para|pare|parar|desliga|desligue|tira|tire|corta|chega de)\b", t):
         return Intent("music_stop")
@@ -110,8 +148,6 @@ def _music_rule(text: str) -> Intent | None:
         return Intent("music_volume", {"delta": 10})
     if re.search(r"\b(abaixa|abaixe|diminui|diminua|baixa|mais baixa|mais baixo)\b", t):
         return Intent("music_volume", {"delta": -10})
-    if re.search(r"\b(toca|toque|tocar|coloca|coloque|bota|solta|liga|ligue|play|inicia)\b", t):
-        return Intent("music_play")
     return None
 
 

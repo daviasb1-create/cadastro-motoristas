@@ -620,6 +620,30 @@ class SettingsDialog(QDialog):
         preset_box.setLayout(presets)
         f.addRow("Sugestões:", preset_box)
         f.addRow("Volume da música:", self._slider("music.volume", 5, 100))
+        f.addRow("", QLabel("SPOTIFY"))
+        f.addRow("Client ID do app Spotify:", self._line("spotify.client_id", "developer.spotify.com > Dashboard > Create app"))
+        spotify = self.services.extras.get("spotify")
+        self.spotify_status = QLabel("conectado" if spotify and spotify.connected() else "não conectado (modo básico)")
+        f.addRow("Situação:", self.spotify_status)
+        sp_row = QHBoxLayout()
+        sp_connect = QPushButton("Conectar Spotify")
+        sp_connect.setObjectName("accent")
+        sp_connect.clicked.connect(lambda: (self._save(close=False), self._busy(
+            sp_connect, spotify.sign_in, lambda msg: self.spotify_status.setText("conectado"), "Aguardando login…")))
+        sp_disconnect = QPushButton("Desconectar")
+        sp_disconnect.setObjectName("danger")
+        sp_disconnect.clicked.connect(lambda: (spotify.sign_out(), self.spotify_status.setText("não conectado")))
+        sp_row.addWidget(sp_connect)
+        sp_row.addWidget(sp_disconnect)
+        sp_box = QWidget()
+        sp_box.setLayout(sp_row)
+        f.addRow("", sp_box)
+        f.addRow("", self._note(
+            "Sem conectar: pausar, continuar, próxima e anterior funcionam com qualquer conta (teclas de mídia), "
+            "e \"toca X\" abre a busca no app. Conectado com Spotify Premium: \"toca X\" toca na hora. "
+            "Ao criar o app no Spotify, use o Redirect URI http://127.0.0.1:8888/callback e marque Web API. "
+            "Passo a passo em docs/INTEGRACOES.md."))
+        f.addRow("", QLabel("MÚSICA DE FUNDO (MODO HOMEM DE FERRO)"))
         f.addRow("", self._check("music.play_on_startup", "Tocar quando o JARVIS iniciar (exceto durante jogos)"))
         f.addRow("", self._check("music.loop", "Repetir sem parar"))
         f.addRow("Tocar só os primeiros (s):", self._spin("music.max_seconds", 0, 3600))

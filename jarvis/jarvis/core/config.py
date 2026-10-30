@@ -186,6 +186,9 @@ DEFAULTS: dict[str, Any] = {
         "loop": False,
         "max_seconds": 0,  # 0 = música inteira
     },
+    "spotify": {
+        "client_id": "",  # app gratuito em developer.spotify.com (ver docs/INTEGRACOES.md)
+    },
     "custom_commands": [],
 }
 

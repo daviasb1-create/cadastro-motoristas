@@ -104,6 +104,20 @@ Em **Configurações > Música**, escolha uma das opções:
 
 A música abaixa sozinha enquanto o JARVIS escuta (para não atrapalhar o reconhecimento) e enquanto ele fala. Opções: tocar ao iniciar o JARVIS (nunca durante jogos), repetir e tocar só os primeiros segundos. Também pela bandeja: **Música de fundo**.
 
+## Spotify
+
+| Exemplo | Efeito |
+|---|---|
+| "Jarvis, toca Back in Black" | Toca a faixa (Premium conectado) ou abre a busca no app |
+| "toca Coldplay" / "toca músicas do AC/DC" | Toca o artista |
+| "coloca a playlist de rock" / "quero ouvir o álbum Thriller" | Playlist / álbum |
+| "pausa" / "continua" / "próxima" / "música anterior" | Funciona com qualquer conta (teclas de mídia) |
+| "que música é essa?" | Diz o que está tocando (conectado) |
+| "aumenta a música" / "abaixa a música" | Volume do Spotify (quando a música de fundo não estiver tocando) |
+| "modo aleatório" | Liga o aleatório |
+
+Configuração: [INTEGRACOES.md, seção Spotify](INTEGRACOES.md#5-spotify).
+
 ## Perguntas livres (com IA ativa)
 
 | Exemplo | Efeito |

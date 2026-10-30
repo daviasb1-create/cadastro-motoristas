@@ -219,3 +219,111 @@ def test_music_link_fallback(services):
     assert result.ok and services.opened == ["spotify:search:back%20in%20black%20ac%2Fdc"]
     services.settings.set("music.url", "file:///c:/x.exe")
     assert not REGISTRY.run(services, "music_play", {}).ok
+
+
+def _spotify(services, handler):
+    import httpx
+
+    from jarvis.integrations.spotify import REFRESH_SECRET, SpotifyService
+
+    services.settings.set("spotify.client_id", "cid")
+    services.secrets.set(REFRESH_SECRET, "r1")
+    svc = SpotifyService(services.settings, services.secrets, services.bus, services.opened.append,
+                         transport=httpx.MockTransport(handler))
+    services.extras["spotify"] = svc
+    return svc
+
+
+def test_spotify_plays_track_artist_and_refreshes_token(services):
+    import json as _json
+
+    import httpx
+
+    from jarvis.actions.base import REGISTRY
+
+    calls = []
+
+    def handler(request: httpx.Request):
+        url = str(request.url)
+        calls.append((request.method, request.url.path, request.content))
+        if url.startswith("https://accounts.spotify.com/api/token"):
+            body = dict(x.split("=") for x in request.content.decode().split("&"))
+            assert body["grant_type"] == "refresh_token" and body["client_id"] == "cid"
+            return httpx.Response(200, json={"access_token": "a1", "expires_in": 3600, "refresh_token": "r2"})
+        if request.url.path == "/v1/search":
+            q = request.url.params["q"]
+            if q == "coldplay":
+                return httpx.Response(200, json={"tracks": {"items": [
+                    {"name": "Yellow", "uri": "spotify:track:y", "artists": [{"name": "Coldplay", "uri": "spotify:artist:c"}]}]}})
+            return httpx.Response(200, json={"tracks": {"items": [
+                {"name": "Hells Bells", "uri": "spotify:track:h", "artists": [{"name": "AC/DC", "uri": "spotify:artist:a"}]},
+                {"name": "Back In Black", "uri": "spotify:track:b", "artists": [{"name": "AC/DC", "uri": "spotify:artist:a"}]}]}})
+        if request.url.path == "/v1/me/player/devices":
+            return httpx.Response(200, json={"devices": [{"id": "pc", "is_active": True, "type": "Computer"}]})
+        if request.url.path == "/v1/me/player/play":
+            return httpx.Response(204)
+        return httpx.Response(404)
+
+    _spotify(services, handler)
+    result = REGISTRY.run(services, "spotify_play", {"query": "back in black"})
+    assert result.say == "Tocando Back In Black, de AC/DC."
+    play = [c for c in calls if c[1] == "/v1/me/player/play"][-1]
+    assert _json.loads(play[2]) == {"uris": ["spotify:track:b"]}
+    assert services.secrets.get("spotify_refresh_token") == "r2"  # token renovado e guardado
+    result = REGISTRY.run(services, "spotify_play", {"query": "coldplay"})
+    assert result.say == "Tocando músicas de Coldplay."
+    play = [c for c in calls if c[1] == "/v1/me/player/play"][-1]
+    assert _json.loads(play[2]) == {"context_uri": "spotify:artist:c"}
+
+
+def test_spotify_without_premium_or_connection_falls_back(services):
+    import httpx
+
+    from jarvis.actions.base import REGISTRY
+    from jarvis.integrations.spotify import SpotifyService
+
+    def handler(request):
+        if "accounts.spotify.com" in str(request.url):
+            return httpx.Response(200, json={"access_token": "a", "expires_in": 3600})
+        if request.url.path == "/v1/search":
+            return httpx.Response(200, json={"tracks": {"items": [{"name": "X", "uri": "spotify:track:x", "artists": []}]}})
+        if request.url.path == "/v1/me/player/devices":
+            return httpx.Response(200, json={"devices": [{"id": "pc", "is_active": True}]})
+        return httpx.Response(403, json={"error": {"status": 403, "reason": "PREMIUM_REQUIRED"}})
+
+    _spotify(services, handler)
+    result = REGISTRY.run(services, "spotify_play", {"query": "back in black"})
+    assert "Premium" in result.say and services.opened[-1] == "spotify:search:back%20in%20black"
+    services.extras["spotify"] = SpotifyService(services.settings, type(services.secrets)(), services.bus,
+                                                services.opened.append)
+    result = REGISTRY.run(services, "spotify_play", {"query": "rock nacional"})
+    assert "Abri a busca" in result.say and services.opened[-1] == "spotify:search:rock%20nacional"
+
+
+def test_spotify_pkce_login_with_local_callback(services):
+    import threading
+    import urllib.parse
+    import urllib.request
+
+    import httpx
+
+    from jarvis.integrations.spotify import REDIRECT_URI, SpotifyService
+
+    def handler(request):
+        body = dict(x.split("=", 1) for x in request.content.decode().split("&"))
+        assert body["grant_type"] == "authorization_code" and body["code"] == "abc"
+        assert urllib.parse.unquote(body["redirect_uri"]) == REDIRECT_URI and len(body["code_verifier"]) >= 43
+        return httpx.Response(200, json={"access_token": "a", "refresh_token": "r", "expires_in": 3600})
+
+    def fake_browser(url):
+        query = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(url).query))
+        assert query["redirect_uri"] == "http://127.0.0.1:8888/callback" and query["code_challenge_method"] == "S256"
+        target = f"{query['redirect_uri']}?code=abc&state={query['state']}"
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # navegador local, sem proxy
+        threading.Timer(0.2, lambda: opener.open(target, timeout=5).read()).start()
+
+    services.settings.set("spotify.client_id", "cid")
+    svc = SpotifyService(services.settings, services.secrets, services.bus, fake_browser,
+                         transport=httpx.MockTransport(handler))
+    assert svc.sign_in(timeout=10) == "Spotify conectado."
+    assert svc.connected() and services.secrets.get("spotify_refresh_token") == "r"

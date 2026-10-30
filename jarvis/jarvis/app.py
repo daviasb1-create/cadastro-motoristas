@@ -30,6 +30,7 @@ from .integrations.msgraph.auth import GraphAuth
 from .integrations.msgraph.client import GraphClient
 from .integrations.msgraph.excel import ExcelService
 from .integrations.msgraph.outlook import OutlookService
+from .integrations.spotify import SpotifyService
 from .integrations.whatsapp import WhatsAppService
 from .notifications.center import NotificationCenter
 
@@ -64,6 +65,7 @@ class JarvisApp:
         services.outlook = OutlookService(client, services.graph, settings, storage, bus, services.notifications, services.llm)
         services.excel = ExcelService(client, services.graph, settings, storage, bus, services.notifications, services.llm)
         services.whatsapp = WhatsAppService(settings, storage, bus, services.notifications, self.open_url)
+        services.extras["spotify"] = SpotifyService(settings, secrets, bus, self.open_url)
         self.assistant = Assistant(services)
         self.hotkeys = HotkeyManager()
         self.gamepad = GamepadWatcher(settings)
@@ -109,6 +111,7 @@ class JarvisApp:
 
     def _publish_connections(self) -> None:
         s = self.services
+        s.extras["spotify"].publish_status()
         provider = s.settings.get("ai.provider", "none")
         if provider == "none":
             s.bus.publish("connection", service="ai", status="off", detail="Somente comandos locais")

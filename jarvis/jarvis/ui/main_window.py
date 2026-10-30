@@ -15,7 +15,7 @@ from .core_widget import ReactorWidget
 from .tray import make_icon
 
 SERVICES = [("microphone", "MICROFONE"), ("outlook", "OUTLOOK"), ("excel", "EXCEL"),
-            ("whatsapp", "WHATSAPP"), ("ai", "IA"), ("game", "MODO JOGO")]
+            ("whatsapp", "WHATSAPP"), ("spotify", "SPOTIFY"), ("ai", "IA"), ("game", "MODO JOGO")]
 
 
 def panel() -> QFrame:
