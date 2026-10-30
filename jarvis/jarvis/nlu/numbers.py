@@ -37,7 +37,7 @@ def _can_follow(previous: str, nxt: str) -> bool:
         return nxt != "mil"
     if nxt == "mil":
         return True
-    prev_value, next_value = _word_value(previous), _word_value(nxt)
+    next_value = _word_value(nxt)
     if previous in HUNDREDS:
         return next_value < 100 and previous != "cem"
     if previous in TENS:

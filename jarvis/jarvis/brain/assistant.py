@@ -103,7 +103,7 @@ class Assistant:
                     self.services.llm.resolve_pending_tool("Usuário cancelou. Nada foi executado.")
                 return Reply("Cancelado. Nada foi feito.", intent="cancelled")
             self.pending.attempts += 1
-            if self.pending.attempts >= 2 or len(clean.split()) > 3:
+            if self.pending.attempts >= 2 or len(clean.split()) > 3 or self.parser.parse(clean) is not None:
                 # Mudou de assunto: descarta a confirmação com segurança e segue
                 self.pending = None
                 self.services.bus.publish("confirm", id=None)

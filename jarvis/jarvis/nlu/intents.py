@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from .normalize import normalize, similar
-from .numbers import first_number, words_to_digits
+from .numbers import words_to_digits
 from .timeparse import parse_when
 
 
@@ -108,7 +108,7 @@ def _speech_rule(text: str) -> Intent | None:
         return Intent("speech_volume", {"delta": 10})
     if re.search(r"\b(fala|falar|fale)\b.*\bmais baixo\b|\b(abaixa|diminui) (a )?(sua|tua) voz\b", t):
         return Intent("speech_volume", {"delta": -10})
-    m = re.search(r"\b(muda|mude|troca|troque|alterna|alterne|usa|use|ativa|ative|chama|chame)\b.*\b(friday|fraide|fraidei|sexta feira|jarvis)\b", t)
+    m = re.search(r"\b(muda|mude|troca|troque|alterna|alterne|usa|use|ativa|ative|chama|chame|volta|volte)\b.*\b(friday|fraide|fraidei|sexta feira|jarvis)\b", t)
     if m:
         profile = "jarvis" if m.group(2) == "jarvis" else "friday"
         return Intent("set_profile", {"profile": profile})
