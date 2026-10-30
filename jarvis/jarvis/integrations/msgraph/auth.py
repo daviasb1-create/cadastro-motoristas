@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import sys
 import threading
 from typing import Callable
@@ -30,6 +31,17 @@ FEATURE_SCOPES = {
 
 class AuthError(Exception):
     pass
+
+
+_GUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+
+def check_client_id(client_id: str) -> None:
+    """O ID do aplicativo é um GUID gerado pelo Entra; o nome do app não serve."""
+    if not _GUID.match(client_id):
+        raise AuthError(
+            f"\"{client_id[:40]}\" não é um ID de aplicativo. Cole o \"ID do aplicativo (cliente)\" mostrado no "
+            "Entra após registrar o app (formato xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx). Passo a passo em docs/INTEGRACOES.md.")
 
 
 def scopes_for(features: dict) -> list[str]:
@@ -74,9 +86,10 @@ class GraphAuth:
     def _application(self):
         import msal
 
-        client_id = self.settings.get("microsoft.client_id", "")
+        client_id = (self.settings.get("microsoft.client_id", "") or "").strip()
         if not client_id:
             raise AuthError("Microsoft 365 não configurado: informe o ID do aplicativo em Configurações > Microsoft 365.")
+        check_client_id(client_id)
         with self._lock:
             if self._app is None or client_id != self._client_id:
                 tenant = self.settings.get("microsoft.tenant", "common") or "common"

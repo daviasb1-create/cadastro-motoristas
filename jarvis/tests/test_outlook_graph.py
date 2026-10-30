@@ -227,3 +227,13 @@ def test_email_forward_archive_delete_mark_read(services):
     reply = assistant.handle("marca todos como lidos", source="text")
     assert reply.text == "2 e-mails marcados como lidos."
     assert [c[2] for c in calls if c[0] == "PATCH"][-2:] == [{"isRead": True}, {"isRead": True}]
+
+
+def test_client_id_must_be_guid():
+    import pytest
+
+    from jarvis.integrations.msgraph.auth import AuthError, check_client_id
+
+    with pytest.raises(AuthError, match="não é um ID de aplicativo"):
+        check_client_id("JARVIS pessoal")
+    check_client_id("1b2c3d4e-0000-4abc-8def-1234567890ab")
