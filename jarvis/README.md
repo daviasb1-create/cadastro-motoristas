@@ -19,6 +19,9 @@ Assistente de voz em português do Brasil que fica em segundo plano, atende ao c
 
 ## Instalação rápida
 
+Passo a passo completo, para quem nunca instalou nada parecido: **[TUTORIAL_INSTALACAO.md](TUTORIAL_INSTALACAO.md)**.
+
+
 1. Instale o **Python 3.12** (marque *Add python.exe to PATH*) ou rode `winget install Python.Python.3.12`.
 2. Copie a pasta `jarvis` para o seu computador (ex.: `C:\Users\Voce\Jarvis`).
 3. Dê dois cliques em **`install.bat`**. Ele cria o ambiente, instala dependências, baixa o modelo de voz (~31 MB) e cria atalhos.
