@@ -41,6 +41,13 @@ Atalhos globais (funcionam com jogo em tela cheia): `Ctrl+Alt+S` para a fala, `C
 | "quais meus lembretes", "cancela o lembrete" | Lista e cancela |
 | "atualiza a lista de programas" | Reindexa programas e jogos |
 
+## Janela
+
+| Exemplo | Efeito |
+|---|---|
+| **F11**, duplo clique no topo, "tela cheia" | Tela cheia (padrão ao abrir) |
+| **Esc**, "sai da tela cheia" | Janela normal |
+
 ## Roteirização (motoristas agregados)
 
 Antes: salve os relatórios do dia nas subpastas de `Documentos\Roteirizacao Icaro`.

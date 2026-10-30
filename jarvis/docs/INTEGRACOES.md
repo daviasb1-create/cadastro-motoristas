@@ -242,7 +242,7 @@ O JARVIS usa o mesmo motor da ferramenta `roteirizacao_icaro.html` (mesmas regra
 3. Planilhas com mais de 20 horas são ignoradas e avisadas, para não misturar o dia anterior (ajuste em **Configurações > Roteirização**).
 4. Colunas são detectadas automaticamente como na ferramenta. Se alguma não for achada, o JARVIS diz qual falta.
 
-A ferramenta HTML continua disponível ("abre a ferramenta de roteirização") para conferência visual e ajustes por clique.
+A ferramenta HTML continua disponível ("abre a ferramenta de roteirização") para conferência visual e ajustes por clique. A cópia que vem no pacote tem a biblioteca de leitura de planilhas embutida, então funciona sem internet.
 
 ## 8. Porcupine (opcional)
 

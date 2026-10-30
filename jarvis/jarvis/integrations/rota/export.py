@@ -57,7 +57,7 @@ def write_excel(result: RouteResult, path: Path) -> Path:
     ov = wb.create_sheet("Fora realocar")
     ov.append(["NF", "Cliente", "CEP", "Município", "Bairro", "Região", "Peso (kg)", "Peso cubado (kg)", "Prazo",
                "Carga do dia", "Motivo"])
-    for r in result.overflow:
+    for r in sorted(result.overflow, key=lambda n: not n.urgent):  # obrigatórias primeiro, como na ferramenta
         ov.append([r.nf, r.cliente, r.cep, r.municipio, r.bairro, r.reg_label, round(r.peso, 1), round(r.volume, 1),
                    fmt_date(r.prazo), "SIM" if r.urgent else "", r.reason])
     for sheet in wb.worksheets:

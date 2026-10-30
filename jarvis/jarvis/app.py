@@ -295,16 +295,14 @@ class JarvisApp:
         self.start_background()
         minimized = self.services.settings.get("general.start_minimized", True) if start_minimized is None else start_minimized
         if not minimized or self.tray is None:
-            self.window.show()
+            self.window.present()
         code = self.qt_app.exec()
         self.shutdown()
         return code
 
     def show_window(self) -> None:
         if self.window is not None:
-            self.window.showNormal()
-            self.window.raise_()
-            self.window.activateWindow()
+            self.window.present()
 
     def notify_tray_once(self) -> None:
         if self.tray is not None and not self._tray_hint_shown:

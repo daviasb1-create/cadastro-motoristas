@@ -5,6 +5,7 @@ import html
 from datetime import datetime
 
 from PySide6.QtCore import QPoint, Qt
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QPushButton,
     QSizePolicy, QTabWidget, QTextBrowser, QVBoxLayout, QWidget,
@@ -51,6 +52,26 @@ class MainWindow(QMainWindow):
         self._drag: QPoint | None = None
         self._build()
         self.apply_profile()
+        QShortcut(QKeySequence(Qt.Key_F11), self, activated=self.toggle_fullscreen)
+        QShortcut(QKeySequence(Qt.Key_Escape), self, activated=lambda: self.isFullScreen() and self.set_fullscreen(False))
+
+    # -------------------------------------------------------- tela cheia
+    def present(self) -> None:
+        """Mostra a janela no modo escolhido (tela cheia por padrão)."""
+        if self.services.settings.get("general.fullscreen", True):
+            self.showFullScreen()
+        else:
+            self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    def set_fullscreen(self, on: bool) -> None:
+        self.services.settings.set("general.fullscreen", bool(on))
+        if self.isVisible():
+            self.present()
+
+    def toggle_fullscreen(self) -> None:
+        self.set_fullscreen(not self.isFullScreen())
 
     # ------------------------------------------------------------ layout
     def _build(self) -> None:
@@ -228,6 +249,13 @@ class MainWindow(QMainWindow):
                         self.chips[key].set_status(payload.get("status", "off"), payload.get("detail", ""))
             elif service in self.chips:
                 self.chips[service].set_status(payload.get("status", "off"), payload.get("detail", ""))
+        elif topic == "fullscreen":
+            mode = payload.get("mode", "toggle")
+            if mode == "toggle":
+                self.toggle_fullscreen()
+            else:
+                self.set_fullscreen(mode == "on")
+                self.present()
         elif topic == "game_mode":
             active = payload.get("active", False)
             self.chips["game"].set_status("ok" if active else "off", payload.get("reason", ""))
@@ -311,8 +339,12 @@ class MainWindow(QMainWindow):
             self.app.submit_text(text)
 
     # --------------------------------------------------- janela sem moldura
-    def mousePressEvent(self, event) -> None:  # noqa: N802
+    def mouseDoubleClickEvent(self, event) -> None:  # noqa: N802
         if event.button() == Qt.LeftButton and event.position().y() < 60:
+            self.toggle_fullscreen()
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802
+        if event.button() == Qt.LeftButton and event.position().y() < 60 and not self.isFullScreen():
             self._drag = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
 
     def mouseMoveEvent(self, event) -> None:  # noqa: N802

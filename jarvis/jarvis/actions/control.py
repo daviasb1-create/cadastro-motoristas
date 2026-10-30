@@ -217,3 +217,11 @@ def cancel_task(services, params):
     if services.speaker:
         services.speaker.stop()
     return ActionResult("Tarefa interrompida.")
+
+
+@action("ui_fullscreen", "Coloca a janela do JARVIS em tela cheia ou volta ao tamanho normal.",
+        props(mode={"type": "string", "enum": ["on", "off", "toggle"]}))
+def ui_fullscreen(services, params):
+    mode = params.get("mode", "toggle")
+    services.bus.publish("fullscreen", mode=mode)
+    return ActionResult("Tela cheia." if mode == "on" else "Janela normal." if mode == "off" else "Pronto.")

@@ -33,3 +33,29 @@ def test_main_window_and_settings_render(home):
     assert app.services.settings.get("voice.profile") == "jarvis"
     window.reactor.stop()
     app.shutdown()
+
+
+def test_fullscreen_default_f11_and_voice(home):
+    from jarvis.actions.base import REGISTRY
+    from jarvis.app import JarvisApp
+    from jarvis.nlu.intents import IntentParser
+    from jarvis.ui.main_window import MainWindow
+
+    qt = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    app = JarvisApp(enable_voice=False)
+    window = MainWindow(app)
+    window.present()
+    qt.processEvents()
+    assert window.isFullScreen()
+    window.toggle_fullscreen()  # F11
+    qt.processEvents()
+    assert not window.isFullScreen() and app.services.settings.get("general.fullscreen") is False
+    intent = IntentParser().parse("Jarvis, tela cheia")
+    assert intent.name == "ui_fullscreen" and intent.params == {"mode": "on"}
+    assert IntentParser().parse("sai da tela cheia").params == {"mode": "off"}
+    REGISTRY.run(app.services, intent.name, intent.params)
+    window.handle_event("fullscreen", {"mode": "on"})
+    qt.processEvents()
+    assert window.isFullScreen()
+    window.reactor.stop()
+    app.shutdown()

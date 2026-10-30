@@ -24,6 +24,7 @@ DEFAULTS: dict[str, Any] = {
         "user_title": "",  # ex.: "senhor", "senhora" ou vazio
         "start_with_windows": False,
         "start_minimized": True,
+        "fullscreen": True,  # janela abre em tela cheia (F11 alterna, Esc sai)
         "close_to_tray": True,
         "ui_animations": True,
     },

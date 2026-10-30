@@ -488,6 +488,10 @@ def _file_rule(text: str) -> Intent | None:
 
 def _window_rule(text: str) -> Intent | None:
     t = text
+    if re.search(r"\b(sai|sair|saia|tira|desliga|fecha)\b.*\btela cheia\b|\b(janela|tela) (normal|menor)\b", t):
+        return Intent("ui_fullscreen", {"mode": "off"})
+    if re.search(r"\btela cheia\b|\b(maximiza|maximizar)\b.*\b(jarvis|voce|sua janela|tela)\b", t):
+        return Intent("ui_fullscreen", {"mode": "on"})
     m = re.search(r"\b(?:muda|mude|troca|troque|alterna|alterne|vai|va|volta|volte)\s+(?:para|pra|pro)\s+(?:a\s+janela\s+(?:do\s+|da\s+|de\s+)?|o\s+|a\s+)?(.+)$", t)
     if m:
         return Intent("switch_window", {"target": m.group(1).strip()})
