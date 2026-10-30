@@ -178,6 +178,13 @@ DEFAULTS: dict[str, Any] = {
         "keep_days": 30,
         "facts": [],
     },
+    "music": {
+        "file": "",  # arquivo de música do próprio usuário (MP3/WAV/FLAC/OGG)
+        "volume": 30,
+        "play_on_startup": False,
+        "loop": False,
+        "max_seconds": 0,  # 0 = música inteira
+    },
     "custom_commands": [],
 }
 

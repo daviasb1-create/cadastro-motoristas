@@ -89,6 +89,19 @@ Atalhos globais (funcionam com jogo em tela cheia): `Ctrl+Alt+S` para a fala, `C
 | "silencia as notificações (por 30 minutos)" / "ativa as notificações" | Silêncio falado; tudo continua registrado |
 | "histórico de notificações" | Lista na tela |
 
+## Música de fundo (modo Homem de Ferro)
+
+Escolha um arquivo de música seu em **Configurações > Música** (MP3, WAV, FLAC ou OGG). O JARVIS não inclui músicas com direitos autorais.
+
+| Exemplo | Efeito |
+|---|---|
+| "Jarvis, modo Homem de Ferro" / "Jarvis, cheguei em casa" / "hora do show" | Toca a sua trilha com entrada suave |
+| "toca a música" / "para a música" | Liga e desliga |
+| "aumenta a música" / "abaixa a música" | Volume da música (separado do volume do Windows) |
+| "Jarvis, pare" | Para a fala e a música |
+
+A música abaixa sozinha enquanto o JARVIS escuta (para não atrapalhar o reconhecimento) e enquanto ele fala. Opções: tocar ao iniciar o JARVIS (nunca durante jogos), repetir e tocar só os primeiros segundos. Também pela bandeja: **Música de fundo**.
+
 ## Perguntas livres (com IA ativa)
 
 | Exemplo | Efeito |

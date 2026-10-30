@@ -81,6 +81,11 @@ class JarvisApp:
                 self.speaker = Speaker(s.settings, s.bus, s.state, s.secrets)
                 s.speaker = self.speaker
                 self.speaker.prewarm_async()
+                from .audio.music import MusicPlayer
+
+                s.extras["music"] = MusicPlayer(s.settings, s.bus)
+                if s.settings.get("music.play_on_startup", False) and s.settings.get("music.file"):
+                    threading.Timer(2.0, lambda: s.state.game_mode or s.extras["music"].play()).start()
             except Exception as exc:  # noqa: BLE001 - sem dispositivo de áudio
                 log.exception("Áudio indisponível")
                 s.bus.publish("activity", text=f"Áudio indisponível: {exc}", kind="error")
@@ -311,6 +316,7 @@ class JarvisApp:
         s = self.services
         for stopper in (lambda: self.pipeline and self.pipeline.stop(), self.hotkeys.stop, self.gamepad.stop,
                         self.gamemode.stop, s.reminders.stop, s.whatsapp.stop, s.outlook.stop, s.excel.stop,
+                        lambda: s.extras.get("music") and s.extras["music"].stop(fade=False),
                         lambda: self.speaker and self.speaker.shutdown()):
             try:
                 stopper()

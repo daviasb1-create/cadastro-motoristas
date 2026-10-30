@@ -53,6 +53,8 @@ class Tray(QSystemTrayIcon):
         self.act_friday.triggered.connect(lambda: app.run_action("set_profile", {"profile": "friday"}))
         profile_menu.addAction(self.act_jarvis)
         profile_menu.addAction(self.act_friday)
+        self.act_music = QAction("Música de fundo", menu, checkable=True)
+        self.act_music.triggered.connect(lambda checked: app.run_action("music_play" if checked else "music_stop", {}))
         act_settings = QAction("Configurações", menu)
         act_settings.triggered.connect(app.open_settings)
         act_quit = QAction("Sair", menu)
@@ -60,6 +62,7 @@ class Tray(QSystemTrayIcon):
         for action in (self.act_show, self.act_talk, self.act_mic, self.act_game, self.act_mute):
             menu.addAction(action)
         menu.addMenu(profile_menu)
+        menu.addAction(self.act_music)
         menu.addSeparator()
         menu.addAction(act_settings)
         menu.addAction(act_quit)
@@ -80,6 +83,8 @@ class Tray(QSystemTrayIcon):
         self.act_friday.setChecked(profile == "friday")
         self.act_mic.setChecked(state.mic_enabled)
         self.act_game.setChecked(state.game_mode)
+        music = self.app.services.extras.get("music")
+        self.act_music.setChecked(bool(music and music.playing))
         muted = settings.get("notifications.muted_until")
         self.act_mute.setChecked(bool(muted))
         color = theme.CYAN if state.mic_enabled else "#475569"

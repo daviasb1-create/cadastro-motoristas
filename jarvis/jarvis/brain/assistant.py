@@ -188,6 +188,9 @@ class Assistant:
         if name == "stop":
             if self.services.speaker:
                 self.services.speaker.stop()
+            music = self.services.extras.get("music")
+            if music is not None and music.playing:
+                music.stop()
             self.pending = None
             self.follow_up = None
             return Reply("", intent=name, speak=False)

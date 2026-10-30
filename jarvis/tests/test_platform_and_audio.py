@@ -127,3 +127,83 @@ def test_reminder_service_fires(services):
     services.reminders.add(datetime.now() + timedelta(seconds=1), "teste")
     assert services.reminders.check_due() == []
     assert len(services.reminders.check_due(time.time() + 2)) == 1 and fired[0]["text"] == "teste"
+
+
+def test_music_rules_actions_and_fades(services, tmp_path):
+    from jarvis.audio.music import DUCK, MusicPlayer, fade_gain
+    from jarvis.brain.assistant import Assistant
+    from jarvis.nlu.intents import IntentParser
+    from jarvis.nlu.normalize import normalize
+
+    parser = IntentParser()
+    for text, name in [("modo homem de ferro", "music_play"), ("cheguei em casa", "music_play"),
+                       ("toca a música", "music_play"), ("para a música", "music_stop"),
+                       ("abaixa a música", "music_volume"), ("aumenta a trilha", "music_volume")]:
+        assert parser.parse(normalize(text)).name == name
+    assert parser.parse(normalize("aumenta o volume")).name == "volume_change"
+
+    assert fade_gain(0, None, 100) == 0 and fade_gain(50, None, 100) == 0.5 and fade_gain(500, None, 100) == 1
+    assert fade_gain(950, 1000, 100) == 0.5
+
+    player = MusicPlayer(services.settings, services.bus)
+    assert "Nenhuma música" in player.validate("")
+    assert "Formato" in player.validate(str(tmp_path / "x.txt")) or "Não encontrei" in player.validate(str(tmp_path / "x.txt"))
+    services.bus.publish("state", state="listening")
+    assert player._duck == DUCK["listening"]
+    services.bus.publish("state", state="idle")
+    assert player._duck == 1.0
+
+    services.extras["music"] = player
+    reply = Assistant(services).handle("modo homem de ferro", source="text")
+    assert not reply.ok and "Nenhuma música" in reply.text
+    reply = Assistant(services).handle("abaixa a música", source="text")
+    assert services.settings.get("music.volume") == 20
+
+
+def test_music_really_plays_file_with_ducking_and_stop(services, tmp_path, monkeypatch):
+    import sys
+    import types
+    import wave
+
+    from jarvis.audio import music as music_mod
+
+    path = tmp_path / "trilha.wav"
+    t = np.arange(44100 * 3) / 44100
+    tone = (np.sin(2 * np.pi * 440 * t) * 20000).astype(np.int16)
+    with wave.open(str(path), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(44100)
+        wav.writeframes(tone.tobytes())
+
+    written = []
+
+    class FakeStream:
+        def __init__(self, **kwargs):
+            assert kwargs["samplerate"] == 44100 and kwargs["channels"] == 2
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def write(self, block):
+            written.append(np.abs(block.astype(np.float32)).max())
+            time.sleep(len(block) / 44100 / 2)  # metade do tempo real
+
+    # o Windows traz o PortAudio na roda do sounddevice; aqui um módulo falso recebe o áudio
+    monkeypatch.setitem(sys.modules, "sounddevice", types.SimpleNamespace(OutputStream=FakeStream))
+    services.settings.set("music.file", str(path))
+    services.settings.set("music.volume", 50)
+    player = music_mod.MusicPlayer(services.settings, services.bus)
+    assert player.play() is None
+    time.sleep(0.3)
+    assert player.playing and written and written[0] < written[-1]  # entrada suave
+    peak = max(written)
+    services.bus.publish("state", state="listening")
+    time.sleep(0.15)
+    assert written[-1] < peak * 0.3  # abaixou enquanto o assistente escuta
+    player.stop()
+    assert not player.playing and written[-1] < peak * 0.1  # saída suave até o silêncio
+    assert peak <= 20000 * 0.5 + 1  # respeita o volume configurado

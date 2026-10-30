@@ -13,6 +13,7 @@ Assistente de voz em português do Brasil que fica em segundo plano, atende ao c
 | Excel Online | Descobre planilhas, pendências, atrasados, busca, resumos, inconsistências; edição só com prévia, confirmação e auditoria. |
 | WhatsApp Business | Lê as notificações do Windows (remetente e prévia), resume, abre conversas, prepara mensagens; nunca envia sozinho. |
 | Central de notificações | Une tudo, evita repetição, prioriza importantes, respeita modo jogo e horário silencioso, resume "o que perdi". |
+| Música de fundo | "Jarvis, modo Homem de Ferro": toca a trilha que você escolher, abaixando sozinha quando ele escuta ou fala. |
 | Jogos | Modo jogo automático (ex.: `NSUNS4.exe`), redução do som do jogo durante a fala, atalhos globais e combinação no controle Xbox. |
 
 ## Instalação rápida
@@ -50,4 +51,4 @@ O microfone é processado no seu PC; só depois de chamado o comando vira texto,
 ```bat
 run_tests.bat
 ```
-133 testes automatizados cobrem interpretação de comandos, confirmações, Excel, Outlook/Graph, WhatsApp, notificações, ciclo de voz, IA e interface.
+136 testes automatizados cobrem interpretação de comandos, confirmações, Excel, Outlook/Graph, WhatsApp, notificações, ciclo de voz, IA e interface.

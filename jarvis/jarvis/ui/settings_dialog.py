@@ -43,7 +43,7 @@ class SettingsDialog(QDialog):
             ("Geral", self._tab_general), ("Voz", self._tab_voice), ("Ativação", self._tab_wake),
             ("Jogos", self._tab_gaming), ("IA", self._tab_ai), ("Microsoft 365", self._tab_microsoft),
             ("Planilhas", self._tab_excel), ("WhatsApp", self._tab_whatsapp),
-            ("Notificações", self._tab_notifications), ("Comandos", self._tab_commands),
+            ("Notificações", self._tab_notifications), ("Música", self._tab_music), ("Comandos", self._tab_commands),
             ("Privacidade e memória", self._tab_privacy),
         ):
             self.tabs.addTab(self._scroll(builder()), title)
@@ -596,6 +596,44 @@ class SettingsDialog(QDialog):
         return w
 
     # ---------------------------------------------------------------- comandos
+    def _tab_music(self) -> QWidget:
+        w, f = self._form()
+        row = QHBoxLayout()
+        self.music_file = self._line("music.file", "Escolha um arquivo MP3, WAV, FLAC ou OGG")
+        pick = QPushButton("Escolher…")
+        pick.clicked.connect(self._pick_music)
+        row.addWidget(self.music_file, 1)
+        row.addWidget(pick)
+        holder = QWidget()
+        holder.setLayout(row)
+        f.addRow("Música:", holder)
+        f.addRow("Volume da música:", self._slider("music.volume", 5, 100))
+        f.addRow("", self._check("music.play_on_startup", "Tocar quando o JARVIS iniciar (exceto durante jogos)"))
+        f.addRow("", self._check("music.loop", "Repetir sem parar"))
+        f.addRow("Tocar só os primeiros (s):", self._spin("music.max_seconds", 0, 3600))
+        buttons = QHBoxLayout()
+        play = QPushButton("▶ Tocar")
+        play.setObjectName("accent")
+        play.clicked.connect(lambda: (self._save(close=False), self.app.run_action("music_play", {})))
+        stop = QPushButton("■ Parar")
+        stop.clicked.connect(lambda: self.app.run_action("music_stop", {}))
+        buttons.addWidget(play)
+        buttons.addWidget(stop)
+        box = QWidget()
+        box.setLayout(buttons)
+        f.addRow("", box)
+        f.addRow("", self._note(
+            "Comandos de voz: \"Jarvis, modo Homem de Ferro\", \"Jarvis, cheguei em casa\", \"toca a música\", "
+            "\"para a música\", \"aumenta/abaixa a música\". \"Jarvis, pare\" também para a música. "
+            "A música abaixa sozinha enquanto o JARVIS escuta e fala. Use um arquivo de música que você possua; "
+            "o JARVIS não inclui músicas com direitos autorais. 0 segundos = música inteira."))
+        return w
+
+    def _pick_music(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(self, "Escolher música", "", "Áudio (*.mp3 *.wav *.flac *.ogg)")
+        if path:
+            self.music_file.setText(path)
+
     def _tab_commands(self) -> QWidget:
         w = QWidget()
         layout = QVBoxLayout(w)
@@ -715,7 +753,7 @@ class SettingsDialog(QDialog):
                 if not command.get("phrases") or not isinstance(command.get("actions", []), list):
                     raise ValueError("cada comando precisa de 'phrases' e 'actions'")
         except (ValueError, AttributeError) as exc:
-            self.tabs.setCurrentIndex(9)
+            self.tabs.setCurrentIndex(10)
             QMessageBox.warning(self, "Comandos", f"JSON inválido: {exc}")
             return
         data = self.settings.as_dict()

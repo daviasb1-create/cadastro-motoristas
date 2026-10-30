@@ -98,6 +98,23 @@ def _volume_rule(text: str) -> Intent | None:
     return None
 
 
+def _music_rule(text: str) -> Intent | None:
+    t = text
+    if re.search(r"\bmodo (homem de ferro|iron man|tony stark|stark)\b|\b(cheguei|chegamos) (em casa|na oficina)\b|\bhora do show\b", t):
+        return Intent("music_play")
+    if not re.search(r"\b(musica|trilha|trilha sonora|som de fundo)\b", t):
+        return None
+    if re.search(r"\b(para|pare|parar|desliga|desligue|tira|tire|corta|chega de)\b", t):
+        return Intent("music_stop")
+    if re.search(r"\b(aumenta|aumente|sobe|mais alta|mais alto)\b", t):
+        return Intent("music_volume", {"delta": 10})
+    if re.search(r"\b(abaixa|abaixe|diminui|diminua|baixa|mais baixa|mais baixo)\b", t):
+        return Intent("music_volume", {"delta": -10})
+    if re.search(r"\b(toca|toque|tocar|coloca|coloque|bota|solta|liga|ligue|play|inicia)\b", t):
+        return Intent("music_play")
+    return None
+
+
 def _speech_rule(text: str) -> Intent | None:
     t = text
     if re.search(r"\b(fala|falar|fale)\b.*\bmais (devagar|lento)\b", t):
@@ -427,6 +444,7 @@ def _greeting_rule(text: str) -> Intent | None:
 RULES: list[Rule] = [
     _greeting_rule,
     _control_rule,
+    _music_rule,
     _speech_rule,
     _game_rule,
     _notifications_rule,
