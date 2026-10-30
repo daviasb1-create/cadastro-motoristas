@@ -113,46 +113,67 @@ class VoicePipeline:
 
     # --------------------------------------------------------------- laço
     def _run(self) -> None:
-        mic_open = False
+        self._mic_open = False
+        self._silent_reads = 0
         self._publish_state("idle")
         while not self._stop.is_set():
-            if not self._mic_enabled:
-                if mic_open:
-                    self.mic.close()
-                    mic_open = False
-                if self._trigger.wait(0.3):
-                    self._trigger.clear()  # com microfone desligado, gatilhos só religam pela interface
-                continue
+            try:
+                self._step()
+            except Exception:  # noqa: BLE001 - uma falha não pode encerrar o controle por voz
+                log.exception("Erro no ciclo de voz; retomando")
+                self._publish_state("idle")
+                self._stop.wait(1)
+
+    def _step(self) -> None:
+        """Uma iteração do laço principal (separada para isolar exceções)."""
+        mic_open = self._mic_open
+        if not self._mic_enabled:
+            if mic_open:
+                self.mic.close()
+                self._mic_open = False
+            if self._trigger.wait(0.3):
+                self._trigger.clear()  # com microfone desligado, gatilhos só religam pela interface
+            return
+        if not mic_open:
+            self._mic_open = mic_open = self.mic.open()
             if not mic_open:
-                mic_open = self.mic.open()
-                if not mic_open:
-                    self.bus.publish("connection", service="microphone", status="error",
-                                     detail="Microfone indisponível")
-                    self._stop.wait(5)
-                    continue
-                self.bus.publish("connection", service="microphone", status="ok", detail="Microfone ativo")
-            if self._trigger.is_set():
-                self._trigger.clear()
-                self._on_wake(self._trigger_source)
-                continue
-            if self._follow_up_at and time.time() >= self._follow_up_at and not self.speaker.speaking.is_set():
-                self._follow_up_at = None
-                self._capture("follow_up", listen_timeout=float(self.settings.get("wake.follow_up_seconds", 6)))
-                continue
-            frame = self.mic.read(timeout=0.3)
-            if frame is None:
-                continue
-            self._remember(frame)
-            speech = self.vad.is_speech(frame)
-            self._publish_level()
-            if speech:
-                self._hangover = 10  # 0,5 s após o fim da fala
-            elif self._hangover:
-                self._hangover -= 1
-            else:
-                continue  # silêncio: o detector nem roda (economia de CPU)
-            if self.wake is not None and self.wake.process(frame):
-                self._on_wake("voice")
+                self.bus.publish("connection", service="microphone", status="error",
+                                 detail="Microfone indisponível")
+                self._stop.wait(5)
+                return
+            self.bus.publish("connection", service="microphone", status="ok", detail="Microfone ativo")
+        if self._trigger.is_set():
+            self._trigger.clear()
+            self._on_wake(self._trigger_source)
+            return
+        if self._follow_up_at and time.time() >= self._follow_up_at and not self.speaker.speaking.is_set():
+            self._follow_up_at = None
+            self._capture("follow_up", listen_timeout=float(self.settings.get("wake.follow_up_seconds", 6)))
+            return
+        frame = self.mic.read(timeout=0.3)
+        if frame is None:
+            # o driver entrega quadros mesmo em silêncio; ~3 s sem nada = microfone removido/travado
+            self._silent_reads += 1
+            if self._silent_reads >= 10:
+                log.warning("Microfone parou de enviar áudio; reabrindo")
+                self._silent_reads = 0
+                self.mic.close()
+                self._mic_open = False
+                self.bus.publish("connection", service="microphone", status="error",
+                                 detail="Microfone sem sinal; tentando reconectar")
+            return
+        self._silent_reads = 0
+        self._remember(frame)
+        speech = self.vad.is_speech(frame)
+        self._publish_level()
+        if speech:
+            self._hangover = 10  # 0,5 s após o fim da fala
+        elif self._hangover:
+            self._hangover -= 1
+        else:
+            return  # silêncio: o detector nem roda (economia de CPU)
+        if self.wake is not None and self.wake.process(frame):
+            self._on_wake("voice")
 
     def _remember(self, frame: bytes) -> None:
         self._preroll.append(frame)
@@ -192,6 +213,7 @@ class VoicePipeline:
         last_voice = started
         heard_command = False
         acked = source != "voice"  # gatilho manual e follow-up não precisam de "Às suas ordens"
+        streaming = getattr(self.stt, "streaming", True)  # Whisper só transcreve no fim
         end_silence = float(settings.get("wake.end_silence_ms", 900)) / 1000.0
         max_seconds = float(settings.get("wake.command_max_seconds", 12))
         while not self._stop.is_set():
@@ -201,7 +223,9 @@ class VoicePipeline:
                 session.feed(frame)
                 if self.vad.is_speech(frame):
                     last_voice = now
-                    if now - started > 0.25:
+                    if not streaming and now - wait_started > (0.6 if source == "voice" and not acked else 0.15):
+                        heard_command = True  # sem parciais: fala após a ativação conta como comando
+                    elif now - started > 0.25:
                         heard_command = heard_command or bool(strip_wake_words(normalize(session.partial()), variants))
                 self._publish_level()
             command_text = strip_wake_words(normalize(session.partial()), variants)
@@ -215,6 +239,7 @@ class VoicePipeline:
                     session = self.stt.session()
                     if ack_mode == "both":
                         self.speaker.cue("listen")
+                    self._publish_state("listening")
                 wait_started = time.time()
                 last_voice = wait_started
                 continue

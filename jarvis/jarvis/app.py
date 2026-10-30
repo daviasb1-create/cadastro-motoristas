@@ -134,6 +134,8 @@ class JarvisApp:
         if self.pipeline is None:
             return
         self.services.pipeline = self.pipeline
+        if self.speaker is not None:
+            self.speaker.on_idle = self.pipeline._publish_state
         self.pipeline.on_calibrated = lambda words: self.services.storage.kv_set("wake.calibrated", words)
         self.pipeline.start()
 

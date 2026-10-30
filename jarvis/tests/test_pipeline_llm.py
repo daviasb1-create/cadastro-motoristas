@@ -132,3 +132,58 @@ def test_llm_refusal_and_unavailable(home):
     client.secrets.set("anthropic_api_key", "k")
     client._anthropic_create = FakeAnthropic([response("refusal")])
     assert client.chat("x", "", [], lambda *a: None).text == "Não posso ajudar com esse pedido."
+
+
+def test_non_streaming_stt_keeps_command_said_in_one_breath(home):
+    """Whisper não tem parciais: a fala após a ativação deve contar como comando (sem 'Às suas ordens')."""
+    settings = Settings(home / "s.json")
+    mic, speaker, got = FakeMic(realtime=True), FakeSpeaker(), []
+    stt = FakeSTT("abre o navegador", after_frames=1)
+    stt.streaming = False
+    original = stt.session
+
+    def session():
+        s = original()
+        s.partial = lambda: ""  # sem resultados parciais
+        return s
+
+    stt.session = session
+    pipeline = VoicePipeline(settings, EventBus(), RuntimeState(), speaker, mic, lambda: FakeWake(MARKER), stt,
+                             lambda t, c, src: got.append(t) or SimpleNamespace(text="", speak=False, expects_reply=False))
+    pipeline.start()
+    frames = [speech_frame()] * 4 + [MARKER] + [silence_frame()] * 4 + [speech_frame()] * 14 + [silence_frame()] * 30
+    mic.push(frames)
+    time.sleep(len(frames) * 0.05 + 1.2)
+    pipeline.stop()
+    assert got == ["abre o navegador"] and speaker.said == []
+
+
+def test_voice_loop_survives_exceptions_and_dead_mic(home):
+    settings = Settings(home / "s.json")
+
+    class FlakyWake(FakeWake):
+        def __init__(self):
+            super().__init__(MARKER)
+            self.calls = 0
+
+        def process(self, frame):
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("falha simulada")
+            return super().process(frame)
+
+    class DeadMic(FakeMic):
+        def read(self, timeout=0.5):
+            return None if self.opened == 1 else super().read(timeout)
+
+    mic, got = DeadMic(realtime=True), []
+    pipeline = VoicePipeline(settings, EventBus(), RuntimeState(), FakeSpeaker(), mic, FlakyWake, FakeSTT("que horas sao"),
+                             lambda t, c, src: got.append(t) or SimpleNamespace(text="", speak=False, expects_reply=False))
+    pipeline.start()
+    time.sleep(1.0)  # ~10 leituras vazias: o microfone é reaberto
+    assert mic.opened >= 2
+    frames = [speech_frame()] * 4 + [speech_frame()] + [speech_frame()] * 2 + [MARKER] + [speech_frame()] * 10 + [silence_frame()] * 25
+    mic.push(frames)
+    time.sleep(len(frames) * 0.05 + 1.5)
+    pipeline.stop()
+    assert got == ["que horas sao"]

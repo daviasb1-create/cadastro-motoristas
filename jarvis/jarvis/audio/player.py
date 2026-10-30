@@ -50,21 +50,30 @@ class Player:
         if volume is None:
             volume = self.settings.get("voice.volume", 85) / 100.0
         samples = (clip.samples.astype(np.float32) * max(0.0, min(1.0, volume))).astype(np.int16)
-        self._stop.clear()
         device = self.settings.get("audio.output_device")
-        block = 1024
         with self._lock:
+            self._stop.clear()
             self.playing = True
             try:
-                with sd.OutputStream(samplerate=clip.rate, channels=1, dtype="int16", device=device,
-                                     blocksize=block) as stream:
-                    for start in range(0, len(samples), block):
-                        if self._stop.is_set():
-                            return False
-                        stream.write(samples[start:start + block].reshape(-1, 1))
-                return True
+                try:
+                    return self._write(sd, samples, clip.rate, device)
+                except sd.PortAudioError:
+                    # alguns dispositivos (WASAPI/WDM-KS) só aceitam a taxa nativa: reamostra e tenta de novo
+                    from .capture import resample
+
+                    rate = int(sd.query_devices(device, "output")["default_samplerate"])
+                    return self._write(sd, resample(samples, clip.rate, rate), rate, device)
             except Exception:  # noqa: BLE001 - dispositivo removido etc.
                 log.exception("Falha ao reproduzir áudio")
                 return False
             finally:
                 self.playing = False
+
+    def _write(self, sd, samples: np.ndarray, rate: int, device) -> bool:
+        block = 1024
+        with sd.OutputStream(samplerate=rate, channels=1, dtype="int16", device=device, blocksize=block) as stream:
+            for start in range(0, len(samples), block):
+                if self._stop.is_set():
+                    return False
+                stream.write(samples[start:start + block].reshape(-1, 1))
+        return True

@@ -29,6 +29,8 @@ class Speaker:
         self.state = state
         self.tts = TTSManager(settings, secrets)
         self.player = Player(settings)
+        self.cue_player = Player(settings)  # separado: um bipe não pode anular o "parar" da fala
+        self.on_idle = None  # o ciclo de voz republica o próprio estado ao terminar de falar
         self.ducker = Ducker(settings, state)
         self._queue: queue.Queue[_Item | None] = queue.Queue()
         self._generation = 0
@@ -60,7 +62,7 @@ class Speaker:
             return
         volume = self.settings.get("audio.beep_volume", 35) / 100.0
         clip = beep(880, 90, volume=0.6, second=1320) if kind == "listen" else beep(660, 90, volume=0.6)
-        threading.Thread(target=self.player.play, args=(clip, volume), daemon=True).start()
+        threading.Thread(target=self.cue_player.play, args=(clip, volume), daemon=True).start()
 
     def stop(self) -> None:
         """Interrompe a fala atual e descarta a fila."""
@@ -114,7 +116,10 @@ class Speaker:
                     self.ducker.restore()
                     self.speaking.clear()
                     if self._queue.empty():
-                        self.bus.publish("state", state="idle")
+                        if self.on_idle:
+                            self.on_idle()
+                        else:
+                            self.bus.publish("state", state="idle")
             except Exception:  # noqa: BLE001
                 log.exception("Erro na fila de fala")
             finally:

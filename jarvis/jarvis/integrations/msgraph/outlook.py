@@ -220,7 +220,11 @@ class OutlookService:
         if not last_seen:
             last_seen = _iso_utc(datetime.now() - timedelta(minutes=5))
         while not self._stop.is_set():
-            if self.available() and self.settings.get("outlook.notify_new", True):
+            try:
+                ready = self.available() and self.settings.get("outlook.notify_new", True)
+            except Exception:  # noqa: BLE001
+                ready = False
+            if ready:
                 try:
                     data = self.client.get("/me/mailFolders/inbox/messages", params={
                         "$filter": f"receivedDateTime gt {last_seen}", "$orderby": "receivedDateTime desc",

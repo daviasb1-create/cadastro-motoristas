@@ -17,7 +17,7 @@ class Ducker:
     def __init__(self, settings, state) -> None:
         self.settings = settings
         self.state = state
-        self._saved: dict[int, float] = {}
+        self._saved: dict[str, float] = {}
         self._lock = threading.Lock()
 
     def enabled(self) -> bool:
@@ -46,11 +46,12 @@ class Ducker:
             try:
                 for session in self._sessions():
                     proc = session.Process
-                    if proc is None or proc.pid == own or proc.pid in self._saved:
+                    key = _session_key(session)
+                    if proc is None or proc.pid == own or key in self._saved:
                         continue
                     volume = session.SimpleAudioVolume
                     current = volume.GetMasterVolume()
-                    self._saved[proc.pid] = current
+                    self._saved[key] = current
                     volume.SetMasterVolume(current * level, None)
             except Exception:  # noqa: BLE001
                 log.debug("Ducking indisponível", exc_info=True)
@@ -61,10 +62,19 @@ class Ducker:
                 return
             try:
                 for session in self._sessions():
-                    proc = session.Process
-                    if proc is not None and proc.pid in self._saved:
-                        session.SimpleAudioVolume.SetMasterVolume(self._saved[proc.pid], None)
+                    key = _session_key(session)
+                    if key in self._saved:
+                        session.SimpleAudioVolume.SetMasterVolume(self._saved[key], None)
             except Exception:  # noqa: BLE001
                 log.debug("Falha ao restaurar volumes", exc_info=True)
             finally:
                 self._saved.clear()
+
+
+def _session_key(session) -> str:
+    """Um processo pode ter várias sessões de áudio (jogos, Discord): cada uma guarda seu volume."""
+    try:
+        return str(session.InstanceIdentifier)
+    except Exception:  # noqa: BLE001
+        proc = session.Process
+        return f"pid:{proc.pid if proc else 0}"

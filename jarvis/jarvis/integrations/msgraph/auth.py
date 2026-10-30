@@ -95,14 +95,26 @@ class GraphAuth:
             accounts = self._application().get_accounts()
         except AuthError:
             return None
+        except Exception:  # noqa: BLE001 - sem internet a MSAL falha ao descobrir o locatário
+            log.warning("Não foi possível consultar a conta Microsoft (sem conexão?)")
+            with self._lock:
+                self._app = None  # tenta de novo na próxima consulta
+            return None
         return accounts[0].get("username") if accounts else None
 
     def is_signed_in(self) -> bool:
         return self.account_name() is not None
 
     def get_token(self, force_refresh: bool = False) -> str:
-        app = self._application()
-        accounts = app.get_accounts()
+        try:
+            app = self._application()
+            accounts = app.get_accounts()
+        except AuthError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            with self._lock:
+                self._app = None
+            raise AuthError("Sem conexão com a Microsoft no momento. Verifique a internet.") from exc
         if not accounts:
             self._status("off", "Não conectado")
             raise AuthError("Conta Microsoft não conectada. Use Configurações > Microsoft 365 > Conectar.")
@@ -151,8 +163,8 @@ class GraphAuth:
             app = self._application()
             for account in app.get_accounts():
                 app.remove_account(account)
-        except AuthError:
-            pass
+        except Exception:  # noqa: BLE001 - mesmo offline, o cache local é apagado abaixo
+            log.warning("Desconexão sem acesso à Microsoft; apagando o cache local")
         try:
             paths.token_cache_path().unlink(missing_ok=True)
         except OSError:

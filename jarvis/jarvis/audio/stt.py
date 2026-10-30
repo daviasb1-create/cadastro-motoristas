@@ -62,6 +62,7 @@ class VoskSession(STTSession):
 
 class VoskSTT:
     name = "vosk"
+    streaming = True
 
     def __init__(self, model) -> None:
         self.model = model
@@ -95,6 +96,7 @@ class WhisperSession(STTSession):
 
 class WhisperSTT:
     name = "whisper"
+    streaming = False
 
     def __init__(self, size: str = "small") -> None:
         from faster_whisper import WhisperModel  # type: ignore

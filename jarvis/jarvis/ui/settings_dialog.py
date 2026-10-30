@@ -306,7 +306,8 @@ class SettingsDialog(QDialog):
         f.addRow("Remetentes importantes:", self._line("outlook.important_senders", "emails separados por vírgula", as_list=True))
         f.addRow("Palavras urgentes:", self._line("outlook.urgent_keywords", as_list=True))
         f.addRow("", self._check("outlook.notify_new", "Avisar novos e-mails"))
-        self.ms_status = QLabel(self._ms_status_text())
+        self.ms_status = QLabel("verificando…")
+        run_async(self._ms_status_text, lambda text, error: self.ms_status.setText(text if not error else "indisponível"))
         f.addRow("Situação:", self.ms_status)
         row = QHBoxLayout()
         connect = QPushButton("Conectar (navegador)")
@@ -348,8 +349,7 @@ class SettingsDialog(QDialog):
 
     def _ms_disconnect(self) -> None:
         if self.services.graph is not None:
-            self.services.graph.sign_out()
-        self.ms_status.setText("não conectado")
+            run_async(self.services.graph.sign_out, lambda *_: self.ms_status.setText("não conectado"))
 
     # ------------------------------------------------------------ planilhas
     def _tab_excel(self) -> QWidget:
