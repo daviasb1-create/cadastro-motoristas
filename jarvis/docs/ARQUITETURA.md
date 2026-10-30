@@ -76,14 +76,14 @@ jarvis/
 │   ├── nlu/                   normalização, números/horas por extenso, regras de comandos
 │   ├── brain/                 orquestrador, contexto, IA, frases
 │   ├── actions/               ações do Windows, volume, lembretes, controle, comandos personalizados
-│   ├── integrations/          Microsoft Graph (auth, Outlook, Excel), WhatsApp, notificações do Windows
+│   ├── integrations/          Microsoft Graph (auth, Outlook, Excel), roteirização, WhatsApp, Spotify, notificações
 │   ├── notifications/         central de notificações
 │   ├── audio/                 microfone, VAD, ativação, reconhecimento, síntese, reprodução, ducking
 │   ├── voice/                 ciclo de voz (estados, pré-roll, interrupção, continuação)
 │   ├── gaming/                modo jogo, atalhos globais, controle Xbox
 │   ├── platform/              APIs nativas do Windows, atalhos .lnk, Steam
 │   └── ui/                    janela, núcleo animado, bandeja, configurações
-├── tests/                     156 testes automatizados (pytest)
+├── tests/                     180 testes automatizados (pytest)
 ├── scripts/                   instalação, modelo de voz, ícone, executável
 ├── installer/                 instalador Inno Setup
 ├── config/                    exemplo de configuração sem segredos

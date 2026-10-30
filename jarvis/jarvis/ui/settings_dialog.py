@@ -41,7 +41,7 @@ class SettingsDialog(QDialog):
         layout.addWidget(self.tabs, 1)
         for title, builder in (
             ("Geral", self._tab_general), ("Voz", self._tab_voice), ("Ativação", self._tab_wake),
-            ("Jogos", self._tab_gaming), ("IA", self._tab_ai), ("Microsoft 365", self._tab_microsoft),
+            ("Jogos", self._tab_gaming), ("IA", self._tab_ai), ("Roteirização", self._tab_rota), ("Microsoft 365", self._tab_microsoft),
             ("Planilhas", self._tab_excel), ("WhatsApp", self._tab_whatsapp),
             ("Notificações", self._tab_notifications), ("Música", self._tab_music), ("Comandos", self._tab_commands),
             ("Privacidade e memória", self._tab_privacy),
@@ -332,6 +332,7 @@ class SettingsDialog(QDialog):
         w, f = self._form()
         f.addRow("ID do aplicativo (client id):", self._line("microsoft.client_id", "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"))
         f.addRow("Locatário (tenant):", self._line("microsoft.tenant", "common, organizations ou o ID da empresa"))
+        f.addRow("", self._check("outlook.enabled", "Ligar Outlook (e-mail e agenda). Desligado, o JARVIS não pede essas permissões"))
         f.addRow("", self._check("microsoft.features.mail", "Ler e-mails e criar rascunhos"))
         f.addRow("", self._check("microsoft.features.send_mail", "Permitir envio (sempre com confirmação)"))
         f.addRow("", self._check("microsoft.features.calendar", "Ler calendário"))
@@ -362,6 +363,51 @@ class SettingsDialog(QDialog):
                                 "no portal Microsoft Entra). O login acontece na página oficial da Microsoft; o JARVIS "
                                 "nunca vê sua senha e guarda os tokens criptografados (DPAPI)."))
         return w
+
+    # ------------------------------------------------------- roteirização
+    def _tab_rota(self) -> QWidget:
+        from ..integrations.rota.reader import FOLDERS
+        from ..integrations.rota.service import config_paths, default_folder
+
+        w, f = self._form()
+        row = QHBoxLayout()
+        self.rota_folder = self._line("rota.folder", str(default_folder()))
+        pick = QPushButton("Escolher…")
+        pick.clicked.connect(lambda: self._pick_dir(self.rota_folder))
+        open_dir = QPushButton("Abrir pasta")
+        open_dir.clicked.connect(lambda: (self._save(close=False), self.app.run_action("rota_abrir", {"what": "pasta"})))
+        row.addWidget(self.rota_folder, 1)
+        row.addWidget(pick)
+        row.addWidget(open_dir)
+        holder = QWidget()
+        holder.setLayout(row)
+        f.addRow("Pasta das planilhas:", holder)
+        f.addRow("Ignorar planilhas com mais de (h):", self._spin("rota.max_age_hours", 0, 240))
+        f.addRow("", self._check("rota.open_excel_after_build", "Abrir o Excel da rota depois de montar"))
+        f.addRow("Ferramenta (HTML):", self._line("rota.tool_html", "vazio = ferramentas\\roteirizacao_icaro.html"))
+        found = next((p for p in config_paths() if p.exists()), None)
+        f.addRow("Configuração da filial:", QLabel(str(found) if found else "não encontrada (rota_filial.json)"))
+        buttons = QHBoxLayout()
+        for label, day in (("Montar rota de amanhã", "amanha"), ("Montar rota de hoje", "hoje")):
+            b = QPushButton(label)
+            b.setObjectName("accent" if day == "amanha" else "")
+            b.clicked.connect(lambda _=False, d=day: (self._save(close=False), self.app.run_action("rota_montar", {"day": d})))
+            buttons.addWidget(b)
+        box = QWidget()
+        box.setLayout(buttons)
+        f.addRow("", box)
+        f.addRow("", self._note(
+            f"Salve os relatórios do dia nas subpastas \"{FOLDERS['chegando']}\", \"{FOLDERS['no_rj']}\" e "
+            f"\"{FOLDERS['agendado']}\" (o JARVIS cria as pastas). O Excel e os romaneios ficam em \"{FOLDERS['saida']}\". "
+            "Comandos: \"monta a rota de amanhã\", \"como ficou a rota\", \"rota do Marcos\", \"o que ficou fora\", "
+            "\"o Elias faltou\", \"tira a nota 12345\", \"realoca o Elias para OES 6\", \"imprime os romaneios\", "
+            "\"abre a planilha da rota\". Motoristas, custos e regras da filial ficam em rota_filial.json (só no seu PC)."))
+        return w
+
+    def _pick_dir(self, edit: QLineEdit) -> None:
+        path = QFileDialog.getExistingDirectory(self, "Escolher pasta", edit.text() or "")
+        if path:
+            edit.setText(path)
 
     def _ms_status_text(self) -> str:
         graph = self.services.graph

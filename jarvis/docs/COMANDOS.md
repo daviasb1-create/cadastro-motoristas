@@ -41,7 +41,24 @@ Atalhos globais (funcionam com jogo em tela cheia): `Ctrl+Alt+S` para a fala, `C
 | "quais meus lembretes", "cancela o lembrete" | Lista e cancela |
 | "atualiza a lista de programas" | Reindexa programas e jogos |
 
-## Outlook
+## Roteirização (motoristas agregados)
+
+Antes: salve os relatórios do dia nas subpastas de `Documentos\Roteirizacao Icaro`.
+
+| Exemplo | Efeito |
+|---|---|
+| "monta a rota de amanhã" / "faz a roteirização de hoje" / "monta a rota de segunda" | Lê as planilhas, distribui por motorista, salva Excel e romaneios e resume por voz |
+| "como ficou a rota" | Repete o resumo (obrigatórias sem cobertura, notas fora, rotas que podem segurar) |
+| "rota do Marcos" / "rota da OES 3" | Notas, peso, capacidade, custo e faixa do motorista |
+| "o que ficou fora da rota" | Notas para realocar, com motivo |
+| "o Elias faltou" / "o Elias voltou" | Marca ausência ou presença no dia e refaz a rota |
+| "tira a nota 12345" / "restaura a nota 12345" | Retira ou devolve uma nota e refaz a rota |
+| "realoca o Elias para OES 6" / "desfaz a realocação do Elias" | Troca a região do motorista no dia |
+| "abre a planilha da rota" / "imprime os romaneios" / "abre a pasta da rota" / "abre a ferramenta de roteirização" | Abre os arquivos |
+
+## Outlook (desligado por padrão)
+
+Ligue em **Configurações > Microsoft 365 > Ligar Outlook** quando o TI liberar o acesso.
 
 | Exemplo | Efeito |
 |---|---|

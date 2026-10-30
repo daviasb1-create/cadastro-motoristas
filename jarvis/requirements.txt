@@ -13,4 +13,6 @@ msal>=1.28,<2                      # login oficial Microsoft (OAuth 2.0 + PKCE)
 msal-extensions>=1.2,<2            # cache de tokens criptografado (DPAPI)
 keyring>=24                        # chaves de API no Gerenciador de Credenciais do Windows
 anthropic>=0.40                    # (opcional em uso) provedor de IA Claude
+openpyxl>=3.1                      # leitura das planilhas da roteirização e Excel da rota
+xlrd>=2.0.1                        # planilhas .xls antigas exportadas por sistemas de transporte
 ormsgpack>=1.5                     # formato binário usado pela API da Fish Audio (mais rápido que JSON)

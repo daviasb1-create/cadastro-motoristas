@@ -17,6 +17,8 @@ Resumo do que depende de você e do custo de cada parte:
 
 ## 1. Microsoft 365 (Outlook e Excel Online)
 
+> O Outlook vem **desligado**. Com ele desligado, o login pede só `User.Read` e `Files.ReadWrite.All` (planilhas). Ligue em **Configurações > Microsoft 365** quando o TI aprovar o acesso a e-mail e agenda.
+
 O JARVIS usa a **API oficial Microsoft Graph** com login OAuth 2.0 (PKCE) na página da própria Microsoft. A senha nunca passa pelo JARVIS. Os tokens ficam em `%APPDATA%\Jarvis\msal_token_cache.bin`, criptografados pela DPAPI do Windows.
 
 ### 1.1 Registrar o aplicativo (uma vez, ~5 minutos)
@@ -228,7 +230,21 @@ O JARVIS guarda apenas o token de renovação, no Gerenciador de Credenciais do 
 
 Para tocar, o app do Spotify precisa estar aberto em algum aparelho (PC, celular, caixa). Se nenhum estiver ativo, o JARVIS abre o Spotify do PC e toca nele.
 
-## 7. Porcupine (opcional)
+## 7. Roteirização Ícaro
+
+O JARVIS usa o mesmo motor da ferramenta `roteirizacao_icaro.html` (mesmas regras de carga obrigatória, capacidade, peso que trava a Fiorino, saída única e margem de custo), lendo as planilhas de uma pasta em vez do upload no navegador.
+
+1. **Configuração da filial**: o arquivo `config\rota_filial.json` (motoristas, custos, adicionais, regiões, regras de CEP e bairro, clientes prioritários, capacidades e faixas) vem no pacote e **não vai para o GitHub**. Para outra filial, copie `config\rota_filial.example.json`, preencha e salve como `rota_filial.json`.
+2. **Pasta**: na primeira vez, o JARVIS cria `Documentos\Roteirizacao Icaro` com as subpastas:
+   - `1 - Fretes chegando`, `2 - Cargas ja no Rio`, `3 - Agendamentos` (cada uma aceita várias planilhas .xlsx, .xls ou .csv);
+   - `De-para CEP (opcional)`: só se o relatório não tiver coluna de região;
+   - `Rotas geradas`: Excel (Resumo, Romaneio, Fora realocar) e romaneios para impressão.
+3. Planilhas com mais de 20 horas são ignoradas e avisadas, para não misturar o dia anterior (ajuste em **Configurações > Roteirização**).
+4. Colunas são detectadas automaticamente como na ferramenta. Se alguma não for achada, o JARVIS diz qual falta.
+
+A ferramenta HTML continua disponível ("abre a ferramenta de roteirização") para conferência visual e ajustes por clique.
+
+## 8. Porcupine (opcional)
 
 Detecção da palavra "jarvis" mais precisa e com menos falsos disparos.
 

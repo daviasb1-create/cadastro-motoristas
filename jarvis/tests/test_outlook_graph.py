@@ -77,6 +77,7 @@ def test_403_is_friendly():
 
 
 def make(services, handler):
+    services.settings.set("outlook.enabled", True)
     client = GraphClient(FakeAuth(), transport=httpx.MockTransport(handler))
     svc = OutlookService(client, FakeAuth(), services.settings, services.storage, services.bus, services.notifications)
     services.outlook = svc
@@ -141,6 +142,7 @@ def test_not_configured_message(services):
         configured = False
 
     client = GraphClient(NoAuth(), transport=httpx.MockTransport(lambda r: httpx.Response(200)))
+    services.settings.set("outlook.enabled", True)
     services.outlook = OutlookService(client, NoAuth(), services.settings, services.storage, services.bus)
     result = REGISTRY.run(services, "email_unread", {})
     assert not result.ok and "Configurações > Microsoft 365" in result.say
@@ -237,3 +239,12 @@ def test_client_id_must_be_guid():
     with pytest.raises(AuthError, match="não é um ID de aplicativo"):
         check_client_id("JARVIS pessoal")
     check_client_id("1b2c3d4e-0000-4abc-8def-1234567890ab")
+
+
+def test_outlook_off_answers_clearly(services):
+    from jarvis.actions.base import REGISTRY
+
+    make(services, lambda request: httpx.Response(200, json={"value": []}))
+    services.settings.set("outlook.enabled", False)
+    result = REGISTRY.run(services, "email_unread", {})
+    assert not result.ok and "Outlook está desligado" in result.say

@@ -90,9 +90,15 @@ class OutlookService:
 
     # ------------------------------------------------------------ estado
     def available(self) -> bool:
-        return self.auth.configured and self.settings.get("microsoft.features.mail", True) and self.auth.is_signed_in()
+        return (self.enabled() and self.auth.configured and self.settings.get("microsoft.features.mail", True)
+                and self.auth.is_signed_in())
+
+    def enabled(self) -> bool:
+        return bool(self.settings.get("outlook.enabled", False))
 
     def _require(self) -> None:
+        if not self.enabled():
+            raise ServiceUnavailable("O Outlook está desligado. Para usar e-mail e agenda, ligue em Configurações > Microsoft 365.")
         if not self.auth.configured:
             raise ServiceUnavailable("O Outlook ainda não foi configurado. Abra Configurações > Microsoft 365.")
         if not self.auth.is_signed_in():

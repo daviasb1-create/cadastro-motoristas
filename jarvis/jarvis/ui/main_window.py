@@ -14,7 +14,7 @@ from . import theme
 from .core_widget import ReactorWidget
 from .tray import make_icon
 
-SERVICES = [("microphone", "MICROFONE"), ("outlook", "OUTLOOK"), ("excel", "EXCEL"),
+SERVICES = [("microphone", "MICROFONE"), ("rota", "ROTA"), ("outlook", "OUTLOOK"), ("excel", "EXCEL"),
             ("whatsapp", "WHATSAPP"), ("spotify", "SPOTIFY"), ("ai", "IA"), ("game", "MODO JOGO")]
 
 
@@ -73,7 +73,10 @@ class MainWindow(QMainWindow):
         top.addLayout(title_box)
         top.addStretch(1)
         self.chips: dict[str, StatusChip] = {}
+        outlook_on = bool(self.services.settings.get("outlook.enabled", False))
         for key, label in SERVICES:
+            if key == "outlook" and not outlook_on:
+                continue
             chip = StatusChip(label)
             self.chips[key] = chip
             top.addWidget(chip)
@@ -221,7 +224,8 @@ class MainWindow(QMainWindow):
             service = payload.get("service")
             if service == "microsoft":
                 for key in ("outlook", "excel"):
-                    self.chips[key].set_status(payload.get("status", "off"), payload.get("detail", ""))
+                    if key in self.chips:
+                        self.chips[key].set_status(payload.get("status", "off"), payload.get("detail", ""))
             elif service in self.chips:
                 self.chips[service].set_status(payload.get("status", "off"), payload.get("detail", ""))
         elif topic == "game_mode":

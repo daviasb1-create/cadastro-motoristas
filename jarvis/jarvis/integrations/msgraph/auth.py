@@ -81,7 +81,12 @@ class GraphAuth:
 
     @property
     def scopes(self) -> list[str]:
-        return scopes_for(self.settings.get("microsoft.features", {}) or {})
+        features = dict(self.settings.get("microsoft.features", {}) or {})
+        if not self.settings.get("outlook.enabled", False):
+            # Outlook desligado: não pede acesso a e-mail e agenda (pedido menor ao TI)
+            for key in ("mail", "send_mail", "calendar"):
+                features[key] = False
+        return scopes_for(features)
 
     def _application(self):
         import msal

@@ -30,6 +30,7 @@ from .integrations.msgraph.auth import GraphAuth
 from .integrations.msgraph.client import GraphClient
 from .integrations.msgraph.excel import ExcelService
 from .integrations.msgraph.outlook import OutlookService
+from .integrations.rota.service import RotaService
 from .integrations.spotify import SpotifyService
 from .integrations.whatsapp import WhatsAppService
 from .notifications.center import NotificationCenter
@@ -66,6 +67,7 @@ class JarvisApp:
         services.excel = ExcelService(client, services.graph, settings, storage, bus, services.notifications, services.llm)
         services.whatsapp = WhatsAppService(settings, storage, bus, services.notifications, self.open_url)
         services.extras["spotify"] = SpotifyService(settings, secrets, bus, self.open_url)
+        services.extras["rota"] = RotaService(settings, bus)
         self.assistant = Assistant(services)
         self.hotkeys = HotkeyManager()
         self.gamepad = GamepadWatcher(settings)
@@ -94,7 +96,8 @@ class JarvisApp:
             threading.Thread(target=self._start_voice, name="voice-init", daemon=True).start()
         s.reminders.start()
         s.whatsapp.start()
-        s.outlook.start_polling()
+        if s.settings.get("outlook.enabled", False):
+            s.outlook.start_polling()
         s.excel.start_watch()
         self.gamemode.start()
         self._start_inputs()
@@ -112,6 +115,7 @@ class JarvisApp:
     def _publish_connections(self) -> None:
         s = self.services
         s.extras["spotify"].publish_status()
+        s.extras["rota"].publish_status()
         provider = s.settings.get("ai.provider", "none")
         if provider == "none":
             s.bus.publish("connection", service="ai", status="off", detail="Somente comandos locais")

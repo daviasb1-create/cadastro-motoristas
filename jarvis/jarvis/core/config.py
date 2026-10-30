@@ -148,6 +148,7 @@ DEFAULTS: dict[str, Any] = {
         "poll_minutes": 3,
     },
     "outlook": {
+        "enabled": False,  # desligado: e-mail e agenda ficam fora (o código continua, basta religar)
         "notify_new": True,
         "important_senders": [],
         "urgent_keywords": ["urgente", "importante", "prazo", "imediato", "asap"],
@@ -199,6 +200,13 @@ DEFAULTS: dict[str, Any] = {
     },
     "spotify": {
         "client_id": "",  # app gratuito em developer.spotify.com (ver docs/INTEGRACOES.md)
+    },
+    "rota": {
+        "folder": "",  # vazio = Documentos\\Roteirizacao Icaro
+        "max_age_hours": 20,  # planilhas mais antigas que isso são ignoradas (evita misturar o dia anterior)
+        "open_excel_after_build": False,
+        "tool_html": "",  # caminho do roteirizacao_icaro.html (vazio = pasta ferramentas do JARVIS)
+        "columns": {},  # ajuste manual de colunas: {"peso": "Peso Real", ...}
     },
     "custom_commands": [],
 }
