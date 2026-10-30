@@ -607,6 +607,18 @@ class SettingsDialog(QDialog):
         holder = QWidget()
         holder.setLayout(row)
         f.addRow("Música:", holder)
+        self.music_url = self._line("music.url", "Ou cole um link do Spotify/YouTube (usado se não houver arquivo)")
+        f.addRow("Link:", self.music_url)
+        presets = QHBoxLayout()
+        for label, url in (("Back in Black (Spotify)", "spotify:search:back%20in%20black%20ac%2Fdc"),
+                           ("Back in Black (YouTube)", "https://www.youtube.com/results?search_query=back+in+black+ac+dc"),
+                           ("Shoot to Thrill (Spotify)", "spotify:search:shoot%20to%20thrill%20ac%2Fdc")):
+            button = QPushButton(label)
+            button.clicked.connect(lambda _=False, u=url: self.music_url.setText(u))
+            presets.addWidget(button)
+        preset_box = QWidget()
+        preset_box.setLayout(presets)
+        f.addRow("Sugestões:", preset_box)
         f.addRow("Volume da música:", self._slider("music.volume", 5, 100))
         f.addRow("", self._check("music.play_on_startup", "Tocar quando o JARVIS iniciar (exceto durante jogos)"))
         f.addRow("", self._check("music.loop", "Repetir sem parar"))
@@ -625,8 +637,9 @@ class SettingsDialog(QDialog):
         f.addRow("", self._note(
             "Comandos de voz: \"Jarvis, modo Homem de Ferro\", \"Jarvis, cheguei em casa\", \"toca a música\", "
             "\"para a música\", \"aumenta/abaixa a música\". \"Jarvis, pare\" também para a música. "
-            "A música abaixa sozinha enquanto o JARVIS escuta e fala. Use um arquivo de música que você possua; "
-            "o JARVIS não inclui músicas com direitos autorais. 0 segundos = música inteira."))
+            "Com ARQUIVO, a música abaixa sozinha enquanto o JARVIS escuta e fala (melhor experiência). "
+            "Com LINK, o Spotify/YouTube abre a música e o volume fica por conta do app. "
+            "Use uma música que você possua (ex.: MP3 comprado). 0 segundos = música inteira."))
         return w
 
     def _pick_music(self) -> None:

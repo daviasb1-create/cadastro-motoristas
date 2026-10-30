@@ -13,6 +13,15 @@ def _player(services):
 
 @action("music_play", "Toca a música de fundo escolhida pelo usuário (modo Homem de Ferro).")
 def music_play(services, params):
+    url = (services.settings.get("music.url", "") or "").strip()
+    if not services.settings.get("music.file") and url:
+        # sem arquivo: abre a música no Spotify/YouTube (o volume fica por conta do app)
+        if not url.startswith(("https://", "spotify:")):
+            return ActionResult.fail("O link da música precisa começar com https:// ou spotify:.")
+        if services.open_url:
+            services.open_url(url)
+        services.activity("Trilha aberta: " + url[:80], kind="music")
+        return ActionResult("Abrindo a trilha." if "spotify" not in url else "Abrindo a trilha no Spotify.")
     error = _player(services).play()
     if error:
         return ActionResult.fail(error)

@@ -207,3 +207,15 @@ def test_music_really_plays_file_with_ducking_and_stop(services, tmp_path, monke
     player.stop()
     assert not player.playing and written[-1] < peak * 0.1  # saída suave até o silêncio
     assert peak <= 20000 * 0.5 + 1  # respeita o volume configurado
+
+
+def test_music_link_fallback(services):
+    from jarvis.actions.base import REGISTRY
+    from jarvis.audio.music import MusicPlayer
+
+    services.extras["music"] = MusicPlayer(services.settings, services.bus)
+    services.settings.set("music.url", "spotify:search:back%20in%20black%20ac%2Fdc")
+    result = REGISTRY.run(services, "music_play", {})
+    assert result.ok and services.opened == ["spotify:search:back%20in%20black%20ac%2Fdc"]
+    services.settings.set("music.url", "file:///c:/x.exe")
+    assert not REGISTRY.run(services, "music_play", {}).ok

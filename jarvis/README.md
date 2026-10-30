@@ -51,4 +51,4 @@ O microfone é processado no seu PC; só depois de chamado o comando vira texto,
 ```bat
 run_tests.bat
 ```
-136 testes automatizados cobrem interpretação de comandos, confirmações, Excel, Outlook/Graph, WhatsApp, notificações, ciclo de voz, IA e interface.
+137 testes automatizados cobrem interpretação de comandos, confirmações, Excel, Outlook/Graph, WhatsApp, notificações, ciclo de voz, IA e interface.

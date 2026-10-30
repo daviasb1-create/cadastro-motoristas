@@ -180,6 +180,7 @@ DEFAULTS: dict[str, Any] = {
     },
     "music": {
         "file": "",  # arquivo de música do próprio usuário (MP3/WAV/FLAC/OGG)
+        "url": "",  # alternativa sem arquivo: link do Spotify ou YouTube
         "volume": 30,
         "play_on_startup": False,
         "loop": False,

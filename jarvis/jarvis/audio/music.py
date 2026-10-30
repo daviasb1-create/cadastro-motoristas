@@ -55,7 +55,7 @@ class MusicPlayer:
     def validate(self, path: str) -> str | None:
         """Retorna mensagem de erro ou None se o arquivo pode ser tocado."""
         if not path:
-            return "Nenhuma música escolhida. Selecione um arquivo em Configurações > Música."
+            return "Nenhuma música escolhida. Selecione um arquivo ou um link em Configurações > Música."
         file = Path(path)
         if not file.exists():
             return f"Não encontrei o arquivo {file.name}."

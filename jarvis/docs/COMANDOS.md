@@ -91,7 +91,9 @@ Atalhos globais (funcionam com jogo em tela cheia): `Ctrl+Alt+S` para a fala, `C
 
 ## Música de fundo (modo Homem de Ferro)
 
-Escolha um arquivo de música seu em **Configurações > Música** (MP3, WAV, FLAC ou OGG). O JARVIS não inclui músicas com direitos autorais.
+Em **Configurações > Música**, escolha uma das opções:
+- **Arquivo** seu (MP3, WAV, FLAC ou OGG, ex.: comprado na Amazon Music/iTunes): melhor experiência, a música abaixa sozinha quando o JARVIS escuta e fala.
+- **Link** do Spotify ou YouTube (há botões prontos para "Back in Black" e "Shoot to Thrill"): o app abre a música; o volume fica por conta dele.
 
 | Exemplo | Efeito |
 |---|---|
