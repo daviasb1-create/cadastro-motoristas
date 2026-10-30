@@ -1,0 +1,287 @@
+{
+  "version": 1,
+  "general": {
+    "assistant_name": "Jarvis",
+    "user_name": "",
+    "user_title": "",
+    "start_with_windows": false,
+    "start_minimized": true,
+    "close_to_tray": true,
+    "ui_animations": true
+  },
+  "voice": {
+    "profile": "jarvis",
+    "engine": "auto",
+    "rate": 0,
+    "volume": 85,
+    "spoken_replies": true,
+    "verbosity": "short",
+    "style": "formal",
+    "azure_region": "brazilsouth"
+  },
+  "profiles": {
+    "jarvis": {
+      "label": "JARVIS",
+      "edge_voice": "pt-BR-AntonioNeural",
+      "edge_pitch": "-4Hz",
+      "azure_voice": "pt-BR-AntonioNeural",
+      "sapi_hint": "Daniel",
+      "acks": [
+        "Às suas ordens.",
+        "Estou aqui.",
+        "Pois não?",
+        "Pode falar."
+      ]
+    },
+    "friday": {
+      "label": "FRIDAY",
+      "edge_voice": "pt-BR-FranciscaNeural",
+      "edge_pitch": "+0Hz",
+      "azure_voice": "pt-BR-FranciscaNeural",
+      "sapi_hint": "Maria",
+      "acks": [
+        "Estou aqui.",
+        "Pode falar.",
+        "Pois não?",
+        "Às suas ordens."
+      ]
+    }
+  },
+  "wake": {
+    "engine": "vosk",
+    "words": [
+      "jarvis"
+    ],
+    "variants": [
+      "jarvis",
+      "jarbas",
+      "jarvas",
+      "jarves",
+      "javis"
+    ],
+    "sensitivity": 0.5,
+    "ack_mode": "voice",
+    "listen_timeout": 6.0,
+    "command_max_seconds": 12.0,
+    "end_silence_ms": 900,
+    "follow_up_seconds": 6.0,
+    "preroll_seconds": 1.2
+  },
+  "stt": {
+    "engine": "vosk",
+    "vosk_model": "vosk-model-small-pt-0.3",
+    "whisper_model": "small",
+    "min_confidence": 0.55
+  },
+  "audio": {
+    "input_device": null,
+    "output_device": null,
+    "beep_on_listen": true,
+    "beep_volume": 35,
+    "duck_others": true,
+    "duck_only_in_game": true,
+    "duck_level": 35,
+    "noise_gate": 1.0
+  },
+  "gaming": {
+    "auto_game_mode": true,
+    "detect_fullscreen": true,
+    "game_processes": [
+      "NSUNS4.exe"
+    ],
+    "short_replies_in_game": true,
+    "silence_notifications_in_game": true,
+    "pause_ui_in_game": true,
+    "hotkeys": {
+      "stop_speech": "ctrl+alt+s",
+      "push_to_talk": "ctrl+alt+j",
+      "toggle_mic": "ctrl+alt+m"
+    },
+    "gamepad": {
+      "enabled": true,
+      "hold_ms": 400,
+      "talk_combo": [
+        "BACK",
+        "LEFT_THUMB"
+      ],
+      "stop_combo": [
+        "BACK",
+        "RIGHT_THUMB"
+      ]
+    }
+  },
+  "ai": {
+    "provider": "none",
+    "anthropic_model": "claude-opus-5-5",
+    "effort": "low",
+    "ollama_url": "http://localhost:11434",
+    "ollama_model": "llama3.1",
+    "timeout_seconds": 30,
+    "send_content": true,
+    "max_history_turns": 20
+  },
+  "apps": {
+    "aliases": {
+      "outlook": {
+        "type": "url",
+        "url": "https://outlook.office.com/mail/"
+      },
+      "outlook online": {
+        "type": "url",
+        "url": "https://outlook.office.com/mail/"
+      },
+      "calendario": {
+        "type": "url",
+        "url": "https://outlook.office.com/calendar/"
+      },
+      "excel": {
+        "type": "url",
+        "url": "https://www.office.com/launch/excel"
+      },
+      "excel online": {
+        "type": "url",
+        "url": "https://www.office.com/launch/excel"
+      },
+      "onedrive": {
+        "type": "url",
+        "url": "https://onedrive.live.com/"
+      },
+      "whatsapp web": {
+        "type": "url",
+        "url": "https://web.whatsapp.com/"
+      },
+      "youtube": {
+        "type": "url",
+        "url": "https://www.youtube.com/"
+      },
+      "google": {
+        "type": "url",
+        "url": "https://www.google.com/"
+      },
+      "storm 4": {
+        "type": "steam",
+        "appid": "349040"
+      }
+    },
+    "close_requires_confirmation": false,
+    "scan_steam": true,
+    "scan_start_menu": true
+  },
+  "folders": {
+    "aliases": {},
+    "search_roots": [],
+    "search_seconds": 4
+  },
+  "microsoft": {
+    "client_id": "COLE-AQUI-O-ID-DO-APLICATIVO-REGISTRADO-NO-ENTRA",
+    "tenant": "common",
+    "features": {
+      "mail": true,
+      "calendar": true,
+      "excel": true,
+      "send_mail": true
+    },
+    "poll_minutes": 3
+  },
+  "outlook": {
+    "notify_new": true,
+    "important_senders": [],
+    "urgent_keywords": [
+      "urgente",
+      "importante",
+      "prazo",
+      "imediato",
+      "asap"
+    ],
+    "manager": "gestor@suaempresa.com.br"
+  },
+  "excel": {
+    "workbooks": [
+      {
+        "alias": "pendências",
+        "name": "Controle de Pendências.xlsx",
+        "drive_id": "preenchido-automaticamente-ao-adicionar",
+        "item_id": "preenchido-automaticamente-ao-adicionar",
+        "web_url": "https://...",
+        "sheet": "Planilha1",
+        "header_row": null,
+        "status_column": "Status",
+        "pending_values": [
+          "pendente",
+          "em aberto"
+        ],
+        "done_values": [],
+        "date_column": "Prazo",
+        "key_columns": [
+          "Nota Fiscal",
+          "Cliente"
+        ],
+        "watch": true
+      }
+    ],
+    "watch_minutes": 10
+  },
+  "whatsapp": {
+    "enabled": true,
+    "handler_match": [
+      "whatsapp"
+    ],
+    "contacts": {
+      "Ana (exemplo)": "+5521999998888"
+    },
+    "prefer_app": true
+  },
+  "notifications": {
+    "speak_new": true,
+    "batch_seconds": 6,
+    "dedupe_minutes": 30,
+    "sources": {
+      "outlook": true,
+      "whatsapp": true,
+      "excel": true,
+      "windows": false,
+      "reminder": true
+    },
+    "windows_apps": [],
+    "important_senders": [],
+    "important_keywords": [
+      "urgente",
+      "importante"
+    ],
+    "quiet_hours": {
+      "enabled": false,
+      "start": "22:00",
+      "end": "07:00"
+    },
+    "muted_until": null
+  },
+  "memory": {
+    "history_enabled": true,
+    "keep_days": 30,
+    "facts": []
+  },
+  "custom_commands": [
+    {
+      "phrases": [
+        "modo trabalho",
+        "começar o expediente"
+      ],
+      "actions": [
+        {
+          "action": "open_target",
+          "target": "outlook"
+        },
+        {
+          "action": "excel_open",
+          "workbook": "pendências"
+        },
+        {
+          "action": "email_unread"
+        }
+      ],
+      "response": "Modo trabalho ativado. Outlook e planilha de pendências abertos.",
+      "confirm": false
+    }
+  ],
+  "_LEIA_ME": "Exemplo de configuração. O JARVIS cria e mantém %APPDATA%\\Jarvis\\settings.json pela tela de Configurações; edite à mão apenas se souber o que está fazendo. Chaves de API e tokens NUNCA ficam aqui."
+}

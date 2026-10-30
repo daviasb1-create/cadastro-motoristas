@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+models/
+build/
+dist/
+*.spec.bak
+.pytest_cache/
+.env
+fish_teste.wav
+
+# Roteirização: a ferramenta HTML tem dados da filial e fica só no PC
+referencia/

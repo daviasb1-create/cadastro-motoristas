@@ -1,0 +1,3 @@
+# Opcionais. Instale com: .venv\Scripts\pip install -r requirements-optional.txt
+pvporcupine>=3.0,<5     # detecção "jarvis" da Picovoice (exige AccessKey gratuita)
+faster-whisper>=1.0     # reconhecimento local mais preciso (mais CPU; baixa modelo no 1º uso)

@@ -1,0 +1,19 @@
+# JARVIS - dependências de execução (Windows 10/11, Python 3.11 a 3.13; recomendado 3.12)
+PySide6-Essentials>=6.7,<7        # interface gráfica, bandeja do sistema
+vosk>=0.3.45,<0.4                  # palavra de ativação e reconhecimento de fala LOCAL (pt-BR)
+sounddevice>=0.4.6,<0.6            # microfone e alto-falante (PortAudio incluso)
+numpy>=1.26                        # processamento de áudio
+miniaudio>=1.59,<2                 # decodificação do áudio das vozes neurais
+edge-tts>=6.1.12,<8                # vozes neurais pt-BR (Antonio / Francisca)
+pycaw>=20240316                    # volume do Windows e redução do som do jogo
+comtypes>=1.2                      # SAPI (vozes offline) e Core Audio
+psutil>=5.9                        # processos, bateria, CPU/memória
+httpx>=0.27,<1                     # Microsoft Graph e Ollama
+msal>=1.28,<2                      # login oficial Microsoft (OAuth 2.0 + PKCE)
+msal-extensions>=1.2,<2            # cache de tokens criptografado (DPAPI)
+keyring>=24                        # chaves de API no Gerenciador de Credenciais do Windows
+anthropic>=0.40                    # (opcional em uso) provedor de IA Claude
+openpyxl>=3.1                      # leitura das planilhas da roteirização e Excel da rota
+xlrd>=2.0.1                        # planilhas .xls antigas exportadas por sistemas de transporte
+mini-racer>=0.12                   # roda o código da ferramenta de roteirização (motor V8, o mesmo do Chrome)
+ormsgpack>=1.5                     # formato binário usado pela API da Fish Audio (mais rápido que JSON)
