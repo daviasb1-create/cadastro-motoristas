@@ -5,6 +5,19 @@ Não precisa ser administrador do computador.
 
 ---
 
+## Já tem o JARVIS instalado? Atualize assim (5 minutos)
+
+1. Feche o JARVIS: ícone perto do relógio > **Sair**.
+2. Baixe o **jarvis-assistente-v3.zip** > botão direito > **Propriedades** > marque **Desbloquear** > OK.
+3. Botão direito no zip > **Extrair tudo** > escolha **a mesma pasta** onde o JARVIS já está > confirme **Substituir os arquivos**.
+   Seu arquivo `.env` (chave da Fish Audio) e suas configurações são mantidos.
+4. Dê dois cliques em **install.bat** e espere "Instalação concluída" (ele instala os componentes novos da roteirização).
+5. Abra o JARVIS pelo atalho e siga a seção **Roteirização** da Parte 2.
+
+Instalação nova? Siga a Parte 1 inteira.
+
+---
+
 ## Parte 1: o básico (voz e comandos do Windows)
 
 ### Passo 1: instalar o Python (uma vez)
@@ -90,9 +103,47 @@ Ele passa a abrir sozinho, escondido na bandeja (perto do relógio).
 
 O ID da voz (`a5b93aeddcc948c19ea04f0afe9d178c`) e o modelo (`s2.1-pro`) já vêm configurados.
 
-### Outlook e Excel Online (cerca de 10 minutos)
+### Roteirização dos agregados (cerca de 5 minutos)
 
-Você usa o Outlook web, o que funciona normalmente.
+O JARVIS monta a rota com **o próprio código da sua ferramenta** `roteirizacao_icaro.html` (o mesmo resultado do navegador).
+
+**A) Primeira vez:**
+1. Diga **"Jarvis, abre a pasta da rota"** (ou ⚙ > aba **Roteirização** > **Abrir pasta**).
+   Ele cria `Documentos\Roteirizacao Icaro` com as pastas:
+   - `1 - Fretes chegando`
+   - `2 - Cargas ja no Rio`
+   - `3 - Agendamentos`
+   - `Rotas geradas` (onde saem o Excel e os PDFs do Circuit)
+2. Em ⚙ > **Roteirização**, a Situação deve mostrar **"ferramenta encontrada"**.
+
+**B) Todo dia:**
+1. Exporte o relatório do sistema (o mesmo que você sobe na ferramenta) e salve em **`2 - Cargas ja no Rio`**.
+   Se tiver relatório de chegando ou de agendamentos, salve nas pastas 1 e 3.
+2. Diga **"Jarvis, monta a rota"**. Ele monta para o próximo dia útil e mostra a tabela por motorista.
+   Feriado: **"Jarvis, monta a rota de amanhã, é feriado"**.
+3. Ajuste por voz, se precisar:
+   - "o Ronald não vai hoje" / "o Ronald vai sim"
+   - "move a nota 1234 para o Deusereis" (pode falar só o final do número)
+   - "troca a rota do Marcos com a do Ronald"
+   - "realoca o Jeferson para OES 1"
+   - "tira a nota 1234" / "restaura a nota 1234"
+   - "rota do Lucas", "como ficou a rota", "o que ficou fora da rota"
+4. **"Jarvis, gera o Excel da rota"** e **"Jarvis, gera os PDFs do Circuit"**: os arquivos abrem sozinhos da pasta `Rotas geradas`.
+5. **"Jarvis, abre o mapa da rota"** abre a ferramenta no navegador para ver o mapa.
+
+A rota montada fica salva: se fechar o JARVIS, ela volta quando abrir de novo.
+Planilhas com mais de 20 horas são ignoradas (para não misturar o dia anterior); dá para mudar em ⚙ > Roteirização.
+
+**C) Quando mudar a ferramenta** (motoristas, custos, regras): copie o HTML novo para a pasta `referencia` do JARVIS, com o nome `roteirizacao_icaro.html`.
+
+**D) Publicar a ferramenta corrigida no Netlify** (mapa e exclusão de Nilópolis/São Paulo):
+1. Guarde uma cópia do arquivo atual do site.
+2. No Netlify, abra o site > **Deploys** > arraste a pasta com o `roteirizacao_icaro.html` novo (renomeie para `index.html` se o site usa esse nome).
+3. Abra o site, monte a rota, vá na aba **Mapa** > **geocodificar**. Cada entrega deve aparecer com o próprio pino.
+
+### Outlook e Excel Online (desligado; só se o TI liberar)
+
+O Outlook vem **desligado** porque a empresa exige aprovação do administrador. Quando o TI aprovar o aplicativo, marque **Ligar Outlook** em ⚙ > **Microsoft 365** e siga os passos abaixo.
 
 **A) Registrar o "aplicativo" na Microsoft (uma vez):**
 1. Entre em https://entra.microsoft.com com a sua conta do trabalho.
@@ -166,6 +217,10 @@ Teste: "Jarvis, quanto está o dólar hoje?".
 | Dispara sozinho | Diminua a sensibilidade; use fone de ouvido |
 | Não fala nada | ⚙ > Voz > Testar voz. Sem internet ele usa a voz do Windows: instale a voz em português em *Configurações > Hora e idioma > Fala* |
 | Outlook não conecta | Veja a mensagem de erro e o guia `docs\SOLUCAO_DE_PROBLEMAS.md` |
+| "Não encontrei planilhas recentes" | Salve o relatório em `Documentos\Roteirizacao Icaro\2 - Cargas ja no Rio` (arquivo com menos de 20 horas) |
+| "Não achei a ferramenta de roteirização" | Confira se existe `referencia\roteirizacao_icaro.html` dentro da pasta do JARVIS |
+| "Tem mais de um Yuri" | Diga nome e sobrenome: "rota do Ronald Yuri" |
+| Mapa não mostra entregas | Clique em geocodificar de novo; se aparecer "token inválido ou bloqueado", use o mapa pelo site do Netlify |
 
 Para diagnóstico detalhado: abra **start_debug.bat** e repita o problema. Se precisar de ajuda, envie o arquivo:
 `%APPDATA%\Jarvis\logs\jarvis.log`
