@@ -183,6 +183,8 @@ DEFAULTS: dict[str, Any] = {
     "fish": {
         "enabled": True,
         "model": "s2.1-pro",
+        "free_model": "s2.1-pro-free",
+        "use_free_when_no_credits": True,  # sem créditos no modelo pago: usa o gratuito automaticamente
         "latency": "balanced",  # balanced (mais rápido) | normal (mais qualidade)
         "volume_db": 0,  # ajuste de volume na geração (-20 a +20 dB); o volume local fica em voice.volume
         "retry_seconds": 60,  # após falha temporária, usa a voz reserva por este tempo

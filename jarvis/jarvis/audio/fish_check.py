@@ -53,13 +53,20 @@ def check_fish_voice(settings, profile: str = "jarvis", text: str = SAMPLE_TEXT,
         report.first_audio_ms = int((time.time() - started) * 1000)
         parts = list(stream.chunks())
     except FishError as exc:
-        report.steps.append(f"✗ Geração de fala com o modelo {settings.get('fish.model')}: {exc}.")
+        tried = settings.get("fish.model")
+        if getattr(exc, "status", 0) == 402 and settings.get("fish.use_free_when_no_credits", True):
+            tried += f" e com o gratuito {settings.get('fish.free_model', 's2.1-pro-free')}"
+        report.steps.append(f"✗ Geração de fala com o modelo {tried}: {exc}.")
+        if getattr(exc, "status", 0) == 402:
+            report.steps.append("  Solução: adicione créditos em fish.audio (Billing). Enquanto isso, o JARVIS usa a voz reserva.")
         return report
     if not parts:
         report.steps.append("✗ A Fish Audio não retornou áudio.")
         return report
     report.clip = AudioClip(np.concatenate(parts), stream.rate)
     report.seconds = report.clip.seconds
-    report.steps.append(f"✓ Fala gerada com o modelo {settings.get('fish.model')} em streaming ({stream.rate} Hz).")
+    used = engine.model
+    note = " (gratuito: a conta está sem créditos para o modelo pago)" if used != settings.get("fish.model") else ""
+    report.steps.append(f"✓ Fala gerada com o modelo {used}{note} em streaming ({stream.rate} Hz).")
     report.ok = True
     return report

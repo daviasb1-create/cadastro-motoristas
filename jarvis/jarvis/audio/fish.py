@@ -26,6 +26,7 @@ log = logging.getLogger(__name__)
 API_URL = "https://api.fish.audio"
 ENV_KEY = "FISH_AUDIO_API_KEY"
 DEFAULT_MODEL = "s2.1-pro"
+FREE_MODEL = "s2.1-pro-free"  # nível gratuito para desenvolvedores (usado quando a conta está sem créditos)
 SAMPLE_RATE = 44100
 
 
@@ -208,6 +209,7 @@ class FishAudioEngine:
 
     def __init__(self, settings, transport: httpx.BaseTransport | None = None) -> None:
         self.settings = settings
+        self._model_override = ""
         self.client = httpx.Client(base_url=API_URL, transport=transport,
                                    timeout=httpx.Timeout(30.0, connect=6.0, read=20.0))
 
@@ -225,7 +227,7 @@ class FishAudioEngine:
     def headers(self) -> dict[str, str]:
         if not self.api_key:
             raise FishError(f"chave {ENV_KEY} não encontrada no arquivo .env")
-        return {"Authorization": f"Bearer {self.api_key}", "model": self.settings.get("fish.model", DEFAULT_MODEL),
+        return {"Authorization": f"Bearer {self.api_key}", "model": self.model,
                 "Content-Type": "application/msgpack" if _msgpack() else "application/json"}
 
     def payload(self, text: str, p: VoiceParams) -> dict:
@@ -251,10 +253,28 @@ class FishAudioEngine:
         return json.dumps(payload, ensure_ascii=False).encode("utf-8")
 
     # ------------------------------------------------------------- uso
+    @property
+    def model(self) -> str:
+        """Modelo em uso: o configurado ou, se a conta ficou sem créditos, o gratuito."""
+        return self._model_override or self.settings.get("fish.model", DEFAULT_MODEL) or DEFAULT_MODEL
+
     def open_stream(self, text: str, p: VoiceParams) -> FishStream:
         if not self.reference_id(p.profile):
             raise FishError("ID da voz Fish Audio não configurado para este perfil")
-        return FishStream(self, text, p).start()
+        try:
+            return FishStream(self, text, p).start()
+        except FishError as exc:
+            free = self.settings.get("fish.free_model", FREE_MODEL)
+            if exc.status != 402 or not free or self.model == free or not self.settings.get("fish.use_free_when_no_credits", True):
+                raise
+            # Sem créditos no modelo pago: tenta o modelo gratuito e passa a usá-lo nesta sessão
+            log.warning("Fish Audio sem créditos para %s; tentando %s", self.model, free)
+            self._model_override = free
+            try:
+                return FishStream(self, text, p).start()
+            except FishError:
+                self._model_override = ""
+                raise
 
     def synthesize(self, text: str, p: VoiceParams) -> AudioClip:
         """Gera o áudio completo (usado para frases curtas em cache e testes)."""

@@ -1,4 +1,4 @@
-"""Teste real da voz Fish Audio configurada (usa a chave do .env e gasta poucos créditos).
+r"""Teste real da voz Fish Audio configurada (usa a chave do .env e gasta poucos créditos).
 
 Uso:  .venv\Scripts\python scripts\test_fish_voice.py
 Confere: chave no .env, ID da voz, modelo, streaming. Salva o resultado em fish_teste.wav e toca.

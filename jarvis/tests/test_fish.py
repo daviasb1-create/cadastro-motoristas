@@ -211,7 +211,7 @@ def test_fallback_when_api_unavailable_and_cooldown(settings, monkeypatch):
     wait_idle(spk)
     spk.say("Segunda resposta.")
     wait_idle(spk)
-    assert edge.calls == 2 and len(calls) == 1  # pausa a Fish e não tenta de novo a cada frase
+    assert edge.calls == 2 and len(calls) == 2  # tenta pago e gratuito uma vez; depois pausa a Fish
     assert any("sem créditos" in e["text"] and "voz reserva" in e["text"] for e in events)
 
 
@@ -269,3 +269,29 @@ def test_fish_key_is_redacted_from_logs():
         record = logging.LogRecord("x", 20, "", 0, message, (), None)
         RedactingFilter().filter(record)
         assert "ABCdef123456" not in record.getMessage()
+
+
+def test_no_credits_switches_to_free_model(settings):
+    models = []
+
+    def handler(request):
+        if request.url.path.startswith("/model/"):
+            return httpx.Response(200, json={"_id": VOICE_ID, "title": "Jarvis (UCM)"})
+        models.append(request.headers["model"])
+        if request.headers["model"] == "s2.1-pro":
+            return httpx.Response(402, json={"message": "insufficient balance"})
+        return httpx.Response(200, content=iter([wav_bytes(0.2)]))
+
+    report = check_fish_voice(settings, transport=httpx.MockTransport(handler))
+    assert report.ok and models == ["s2.1-pro", "s2.1-pro-free"]
+    assert "s2.1-pro-free" in report.text() and "gratuito" in report.text()
+
+
+def test_no_credits_on_both_models_explains_solution(settings):
+    def handler(request):
+        if request.url.path.startswith("/model/"):
+            return httpx.Response(200, json={"_id": VOICE_ID, "title": "Jarvis (UCM)"})
+        return httpx.Response(402, json={"message": "insufficient balance"})
+
+    report = check_fish_voice(settings, transport=httpx.MockTransport(handler))
+    assert not report.ok and "s2.1-pro-free" in report.text() and "créditos" in report.text()
