@@ -1,0 +1,140 @@
+"""Serviços do Windows: catálogo de serviços otimizáveis, parada temporária e tipo de inicialização.
+
+Regras de segurança:
+- Windows Defender, Firewall, Windows Update e serviços críticos estão na lista PROTECTED e nunca
+  são parados nem alterados.
+- 'Parar durante a sessão' é temporário: o serviço volta a rodar ao desativar o Turbo/Modo Gamer,
+  ao restaurar ou no próximo reinício.
+- 'Definir como Manual' guarda o tipo original e é revertível.
+"""
+from __future__ import annotations
+
+import psutil
+
+from ..config import IS_WINDOWS
+from ..utils import log, run
+from . import registry as reg
+from .journal import Journal
+
+PROTECTED = {
+    "windefend", "wdnissvc", "sense", "mdcoresvc", "securityhealthservice", "wscsvc", "mpssvc", "bfe",
+    "wuauserv", "usosvc", "waasmedicsvc", "bits", "cryptsvc", "trustedinstaller", "eventlog", "rpcss",
+    "dcomlaunch", "rpceptmapper", "dhcp", "dnscache", "nsi", "lanmanworkstation", "audiosrv",
+    "audioendpointbuilder", "themes", "profsvc", "schedule", "samss", "lsm", "power", "plugplay",
+    "winmgmt", "netprofm", "nlasvc", "wlansvc", "eaphost", "bthserv", "gpsvc", "coremessagingregistrar",
+    "brokerinfrastructure", "systemeventsbroker", "userManager".lower(), "staterepository", "appxsvc",
+    "clipsvc", "tokenbroker", "keyiso", "vaultsvc", "netlogon", "mpsdrv", "textinputmanagementservice",
+}
+
+# id: (nome amigável, descrição, recomendação) | recomendação: "temp" = parar só durante a sessão,
+# "manual" = pode ser definido como Manual (inicia sob demanda), "info" = apenas informativo.
+CATALOG = {
+    "DiagTrack": ("Telemetria (Experiências do Usuário Conectado)",
+                  "Coleta e envia dados de diagnóstico. Definir como Manual não afeta o uso do PC.", "manual"),
+    "dmwappushservice": ("Roteamento de mensagens WAP Push",
+                         "Auxiliar da telemetria. Pode ficar Manual com segurança.", "manual"),
+    "WSearch": ("Windows Search (indexação)",
+                "Indexa arquivos continuamente. Parar durante jogos reduz uso de disco e CPU; a busca "
+                "continua funcionando (mais lenta) e a indexação volta depois.", "temp"),
+    "SysMain": ("SysMain (Superfetch)",
+                "Pré-carrega apps na RAM. Em HDD com pouca RAM pode causar disco a 100%; em SSD costuma "
+                "ajudar, então só pare durante jogos se notar uso de disco alto.", "temp"),
+    "MapsBroker": ("Gerenciador de Mapas Baixados", "Só usado pelo app Mapas.", "manual"),
+    "Fax": ("Fax", "Raramente usado.", "manual"),
+    "RetailDemo": ("Serviço de Demonstração de Varejo", "Modo demonstração de loja. Inútil em PCs pessoais.",
+                   "manual"),
+    "WpcMonSvc": ("Controle dos Pais", "Necessário só se usa Microsoft Family.", "manual"),
+    "PhoneSvc": ("Serviço de Telefonia", "Usado para chamadas via celular vinculado.", "manual"),
+    "TrkWks": ("Cliente de Rastreamento de Link Distribuído", "Rastreia atalhos em redes corporativas.", "manual"),
+    "Spooler": ("Spooler de Impressão", "Necessário para imprimir. Pare só durante jogos se não for imprimir.",
+                "temp"),
+    "edgeupdate": ("Atualizador do Microsoft Edge", "O Edge continua se atualizando ao ser aberto.", "manual"),
+    "edgeupdatem": ("Atualizador do Microsoft Edge (m)", "O Edge continua se atualizando.", "manual"),
+    "gupdate": ("Google Update", "O Chrome continua se atualizando ao ser aberto.", "manual"),
+    "gupdatem": ("Google Update (m)", "O Chrome continua se atualizando.", "manual"),
+    "AdobeARMservice": ("Atualizador Adobe Acrobat", "Atualizações serão verificadas ao abrir o Acrobat.",
+                        "manual"),
+    "WerSvc": ("Relatório de Erros do Windows", "Envia relatórios de falhas. Pode parar durante jogos.", "temp"),
+    "DPS": ("Serviço de Política de Diagnóstico", "Diagnósticos automáticos. Pode parar durante jogos.", "temp"),
+}
+
+_START_MAP = {"automatic": "auto", "manual": "demand", "disabled": "disabled"}
+_LABEL = {"auto": "Automático", "delayed-auto": "Automático (atraso)", "demand": "Manual",
+          "disabled": "Desativado", "boot": "Boot", "system": "Sistema"}
+
+
+def _start_type(name: str) -> str | None:
+    path = rf"SYSTEM\CurrentControlSet\Services\{name}"
+    ok, _t, start = reg.read_value("HKLM", path, "Start")
+    if not ok:
+        return None
+    if start == 2:
+        _ok, _t, delayed = reg.read_value("HKLM", path, "DelayedAutostart")
+        return "delayed-auto" if delayed == 1 else "auto"
+    return {0: "boot", 1: "system", 3: "demand", 4: "disabled"}.get(start, "demand")
+
+
+def get_service(name: str) -> dict | None:
+    if not IS_WINDOWS:
+        return None
+    try:
+        s = psutil.win_service_get(name)
+        info = s.as_dict()
+    except Exception:
+        return None
+    start = _start_type(name) or _START_MAP.get(info.get("start_type"), "demand")
+    return {"name": info["name"], "display": info.get("display_name", name), "status": info.get("status"),
+            "start": start, "start_label": _LABEL.get(start, start), "pid": info.get("pid")}
+
+
+def catalog_status() -> list[dict]:
+    out = []
+    for name, (label, desc, rec) in CATALOG.items():
+        s = get_service(name)
+        if not s:
+            continue
+        s.update({"label": label, "desc": desc, "rec": rec})
+        out.append(s)
+    return out
+
+
+def stop_temporarily(name: str, journal: Journal, gid: str) -> tuple[bool, str]:
+    if name.lower() in PROTECTED:
+        return False, f"{name} é protegido e não será parado."
+    s = get_service(name)
+    if not s or s["status"] != "running":
+        return False, f"{name} não está em execução."
+    r = run(["sc.exe", "stop", name], timeout=30)
+    if r.returncode != 0 and "1062" not in r.stdout:
+        return False, f"Não foi possível parar {name}: {r.stdout.strip()[:120]}"
+    journal.group(gid, "Sessão de otimização", "sessao")
+    journal.add_action(gid, {"kind": "service_running", "name": name, "desc": f"Reiniciar serviço {name}"})
+    log.info("Serviço %s parado temporariamente (%s)", name, gid)
+    return True, f"{CATALOG.get(name, (name,))[0]} parado durante a sessão."
+
+
+def set_manual(name: str, journal: Journal) -> tuple[bool, str]:
+    if name.lower() in PROTECTED:
+        return False, f"{name} é protegido."
+    s = get_service(name)
+    if not s:
+        return False, f"Serviço {name} não encontrado."
+    if s["start"] in ("demand", "disabled"):
+        return True, f"{name} já está como {s['start_label']}."
+    gid = f"service:{name}"
+    r = run(["sc.exe", "config", name, "start=", "demand"])
+    if r.returncode != 0:
+        return False, f"Falha: {r.stdout.strip()[:150]}"
+    journal.group(gid, f"Serviço {CATALOG.get(name, (name,))[0]} → Manual", "servicos")
+    journal.add_action(gid, {"kind": "service_start", "name": name, "start": s["start"],
+                             "desc": f"Restaurar inicialização de {name} ({s['start_label']})"})
+    return True, f"{name} definido como Manual (revertível)."
+
+
+def restore_start(name: str, journal: Journal) -> list[str]:
+    return journal.revert_group(f"service:{name}")
+
+
+def session_candidates() -> list[dict]:
+    """Serviços que podem ser parados durante uma sessão de jogo/turbo."""
+    return [s for s in catalog_status() if s["rec"] in ("temp", "manual") and s["status"] == "running"]
