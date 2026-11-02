@@ -7,6 +7,8 @@ import os
 import sys
 import time
 
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tbp.core import registry as reg, services, snapshot, system_mods, ultralite as UL, winapi, winver  # noqa: E402
