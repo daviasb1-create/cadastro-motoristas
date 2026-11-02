@@ -18,7 +18,8 @@ from ..widgets import Card, ghost_button, page_header, primary_button, run_bg
 CAT_LABEL = {"sessao": "Sessão", "energia": "Energia", "rede": "Rede", "inicializacao": "Inicialização",
              "servicos": "Serviços", "armazenamento": "Armazenamento", "jogos": "Jogos", "gaming": "Jogos",
              "responsividade": "Responsividade", "visual": "Visual", "segundo_plano": "Segundo plano",
-             "geral": "Geral"}
+             "geral": "Geral", "debloat": "Debloat", "recursos": "Recursos opcionais", "tarefas": "Tarefas",
+             "perfil": "Perfil", "privacidade": "Privacidade"}
 
 
 def _open(path):
@@ -118,7 +119,8 @@ class SecurityPage(ctk.CTkScrollableFrame):
     def render_history(self):
         for w in self.hist_box.winfo_children():
             w.destroy()
-        groups = [g for g in engine.journal.describe() if g["reg"] or g["actions"] or g["id"].startswith("session")]
+        groups = [g for g in engine.journal.describe() if g["reg"] or g["actions"] or g["id"].startswith("session")
+                  or g["id"].startswith("profile:ultra") or g["id"].startswith("profile:gaming")]
         if not groups:
             ctk.CTkLabel(self.hist_box, text="Nenhuma alteração ativa. Seu Windows está nas configurações originais.",
                          text_color=T.OK, font=T.font(12)).pack(anchor="w", pady=4)
@@ -139,6 +141,9 @@ class SecurityPage(ctk.CTkScrollableFrame):
         def work():
             if gid == "session:turbo":
                 return engine.turbo_off()
+            if gid.startswith("profile:ultra_lite") or gid.startswith("profile:gaming_edition"):
+                from ...core import ultralite
+                return ultralite.deactivate(gid)
             return engine.journal.revert_group(gid)
 
         def done(errs):
@@ -169,7 +174,8 @@ class SecurityPage(ctk.CTkScrollableFrame):
             else:
                 messagebox.showinfo("Restaurar", "Todas as configurações originais foram restauradas.\nReinicie o "
                                     "Windows para garantir que todos os ajustes voltaram.", parent=self)
-        run_bg(self, engine.restore_everything, done)
+        from ...core import ultralite
+        run_bg(self, ultralite.restore_windows_original, done)
 
     def create_rp(self):
         if not winapi.is_admin():

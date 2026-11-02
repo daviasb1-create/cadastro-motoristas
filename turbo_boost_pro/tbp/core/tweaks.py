@@ -11,7 +11,7 @@ from typing import Callable
 
 from . import registry as reg
 from .journal import Journal
-from .registry import REG_DWORD, REG_SZ
+from .registry import REG_BINARY, REG_DWORD, REG_SZ
 from . import winapi
 
 
@@ -53,7 +53,9 @@ class Tweak:
     reboot: bool = False
     after: Callable[[], None] | None = None
     turbo: bool = False      # incluído no TURBO MODE / Máximo Desempenho
-    gamer: bool = False      # incluído no Modo Gamer / Gaming Boost
+    gamer: bool = False      # incluído no Modo Gamer / Gaming Boost / Gaming Edition
+    lite: bool = False       # incluído no WINDOWS ULTRA LITE
+    min_build: int = 0       # build mínima do Windows (22000 = Windows 11)
 
     @property
     def gid(self) -> str:
@@ -285,7 +287,112 @@ TWEAKS: list[Tweak] = [
           benefit="Economiza 150-300 MB de RAM.", turbo=True),
 ]
 
+def _svchost_changes() -> list[RegChange]:
+    """Agrupa serviços em menos processos svchost (limite = RAM total em KB)."""
+    try:
+        import psutil
+        kb = int(psutil.virtual_memory().total // 1024)
+    except Exception:
+        return []
+    return [D("HKLM", r"SYSTEM\CurrentControlSet\Control", "SvcHostSplitThresholdInKB", min(kb, 0xFFFFFFFF))]
+
+
+_POL = r"SOFTWARE\Policies\Microsoft\Windows"
+_HKCU_POL = r"Software\Policies\Microsoft\Windows"
+
+TWEAKS += [
+    # ---------------------------------------------------------------- JOGOS (Gaming Edition)
+    Tweak("keyboard_fast", "gaming", "Teclado com resposta máxima",
+          "Atraso de repetição mínimo e velocidade de repetição máxima do teclado.",
+          [S("HKCU", r"Control Panel\Keyboard", "KeyboardDelay", "0"),
+           S("HKCU", r"Control Panel\Keyboard", "KeyboardSpeed", "31")],
+          benefit="Movimentação e comandos repetidos respondem mais rápido.",
+          after=winapi.apply_keyboard_settings_live, gamer=True),
+    Tweak("gamebar_tips_off", "gaming", "Desativar painel e dicas da Game Bar",
+          "Impede a Game Bar de abrir painéis e dicas ao iniciar jogos (o Game Mode continua ativo).",
+          [D("HKCU", r"Software\Microsoft\GameBar", "ShowStartupPanel", 0),
+           D("HKCU", r"Software\Microsoft\GameBar", "UseNexusForGameBarEnabled", 0)],
+          benefit="Sem sobreposições inesperadas no início da partida.", gamer=True),
+    Tweak("cpu_priority_games_io", "gaming", "Prioridade de E/S e memória para jogos (MMCSS)",
+          "Garante que tarefas de jogo do agendador multimídia não sejam rebaixadas (Affinity/Background Only).",
+          [D("HKLM", _GAMES, "Affinity", 0), S("HKLM", _GAMES, "Background Only", "False"),
+           D("HKLM", _GAMES, "Clock Rate", 10000)],
+          benefit="Agendamento consistente das threads de áudio/jogo.", gamer=True),
+
+    # ---------------------------------------------------------------- EFEITOS VISUAIS
+    Tweak("visual_best", "visual", "Efeitos visuais: melhor desempenho (mantendo fontes suaves)",
+          "Equivale a 'Ajustar para obter melhor desempenho', mas mantém o ClearType e as miniaturas.",
+          [RegChange("HKCU", r"Control Panel\Desktop", "UserPreferencesMask", REG_BINARY,
+                     bytes.fromhex("9012038010000000")),
+           S("HKCU", r"Control Panel\Desktop", "DragFullWindows", "0"),
+           S("HKCU", r"Control Panel\Desktop", "FontSmoothing", "2"),
+           D("HKCU", r"Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects", "VisualFXSetting", 3)],
+          benefit="Interface mais leve; menos trabalho para o DWM durante jogos.",
+          note="Efeito completo após sair e entrar novamente na conta.",
+          after=winapi.apply_visual_settings_live, lite=True, gamer=True),
+
+    # ---------------------------------------------------------------- PRIVACIDADE / RECURSOS DE IA
+    Tweak("copilot_off", "privacidade", "Desativar Copilot do Windows",
+          "Remove o Copilot da barra de tarefas e impede sua execução em segundo plano.",
+          [D("HKCU", _HKCU_POL + r"\WindowsCopilot", "TurnOffWindowsCopilot", 1),
+           D("HKLM", _POL + r"\WindowsCopilot", "TurnOffWindowsCopilot", 1),
+           D("HKCU", _ADV, "ShowCopilotButton", 0)],
+          benefit="Menos um processo WebView carregado (~100-200 MB).", lite=True, min_build=22621),
+    Tweak("recall_off", "privacidade", "Desativar Recall (capturas de tela por IA)",
+          "Impede o Windows de salvar instantâneos da tela para a linha do tempo de IA (PCs Copilot+).",
+          [D("HKCU", _HKCU_POL + r"\WindowsAI", "DisableAIDataAnalysis", 1),
+           D("HKLM", _POL + r"\WindowsAI", "DisableAIDataAnalysis", 1)],
+          benefit="Elimina gravação contínua em disco e uso de NPU/CPU.", lite=True, min_build=22621),
+    Tweak("web_search_off", "privacidade", "Pesquisa do Iniciar somente local (sem Bing)",
+          "A busca do menu Iniciar deixa de consultar a internet a cada tecla digitada.",
+          [D("HKCU", _HKCU_POL + r"\Explorer", "DisableSearchBoxSuggestions", 1),
+           D("HKCU", r"Software\Microsoft\Windows\CurrentVersion\Search", "BingSearchEnabled", 0)],
+          benefit="Busca do Iniciar mais rápida e sem tráfego de rede.", lite=True),
+    Tweak("activity_off", "privacidade", "Desativar histórico de atividades",
+          "Para de registrar e enviar a linha do tempo de apps e arquivos abertos.",
+          [D("HKLM", _POL + r"\System", "EnableActivityFeed", 0),
+           D("HKLM", _POL + r"\System", "PublishUserActivities", 0),
+           D("HKLM", _POL + r"\System", "UploadUserActivities", 0)],
+          benefit="Menos escrita em disco e tarefas de fundo.", lite=True),
+    Tweak("ads_off", "privacidade", "Desativar ID de publicidade e experiências personalizadas",
+          "Apps deixam de usar um identificador de anúncios; o Windows para de personalizar dicas com seus dados.",
+          [D("HKCU", r"Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo", "Enabled", 0),
+           D("HKCU", r"Software\Microsoft\Windows\CurrentVersion\Privacy",
+             "TailoredExperiencesWithDiagnosticDataEnabled", 0),
+           D("HKCU", r"Software\Microsoft\Siuf\Rules", "NumberOfSIUFInPeriod", 0)],
+          benefit="Menos rastreamento e solicitações de feedback.", lite=True),
+    Tweak("start_clean", "privacidade", "Iniciar e barra de tarefas mais limpos",
+          "Remove recomendações/dicas do Iniciar, rastreamento de apps abertos e o botão de Chat/Teams.",
+          [D("HKCU", _ADV, "Start_IrisRecommendations", 0), D("HKCU", _ADV, "Start_TrackProgs", 0),
+           D("HKCU", _ADV, "TaskbarMn", 0)],
+          benefit="Iniciar abre mais rápido; Teams pessoal não pré-carrega.", lite=True, min_build=22000),
+    Tweak("cortana_off", "privacidade", "Desativar Cortana",
+          "Impede a Cortana de rodar (já descontinuada no Windows 11).",
+          [D("HKLM", _POL + r"\Windows Search", "AllowCortana", 0)], benefit="Menos um processo de fundo.",
+          lite=True),
+    Tweak("wer_off", "privacidade", "Desativar envio de relatórios de erro",
+          "Falhas de apps deixam de gerar e enviar relatórios para a Microsoft (o log de eventos continua).",
+          [D("HKLM", r"SOFTWARE\Microsoft\Windows\Windows Error Reporting", "Disabled", 1)],
+          benefit="Sem picos de CPU/disco após travamentos de jogos.", lite=True),
+
+    # ---------------------------------------------------------------- MEMÓRIA EM IDLE
+    Tweak("svchost_split", "segundo_plano", "Agrupar serviços do Windows (menos processos svchost)",
+          "Faz o Windows hospedar serviços em menos processos svchost.exe. Reduz a contagem de processos em "
+          "30-50% e um pouco a RAM em idle.",
+          _svchost_changes, benefit="Menos processos e trocas de contexto.",
+          note="Se um serviço do grupo falhar, os outros do mesmo processo reiniciam juntos. Reversível.",
+          risk="Médio", reboot=True, lite=True),
+]
+
 TWEAKS_BY_ID = {t.id: t for t in TWEAKS}
+
+# Otimizações já existentes que também fazem parte do WINDOWS ULTRA LITE
+for _tid in ("visual_anim", "visual_transparency", "visual_misc", "bg_apps", "suggestions_off", "telemetry_min",
+             "delivery_opt", "edge_bg", "widgets_off", "menu_delay", "startup_delay", "hover_time",
+             "power_throttling_off", "priority_sep", "game_dvr_off"):
+    TWEAKS_BY_ID[_tid].lite = True
+TWEAKS_BY_ID["widgets_off"].min_build = 22000
+TWEAKS_BY_ID["windowed_opt"].min_build = 22000
 
 CATEGORIES = {
     "gaming": "Jogos",
@@ -294,6 +401,7 @@ CATEGORIES = {
     "responsividade": "Responsividade",
     "visual": "Efeitos visuais",
     "segundo_plano": "Segundo plano",
+    "privacidade": "Privacidade, telemetria e IA",
 }
 
 

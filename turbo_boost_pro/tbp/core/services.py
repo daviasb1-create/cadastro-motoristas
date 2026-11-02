@@ -56,7 +56,66 @@ CATALOG = {
                         "manual"),
     "WerSvc": ("Relatório de Erros do Windows", "Envia relatórios de falhas. Pode parar durante jogos.", "temp"),
     "DPS": ("Serviço de Política de Diagnóstico", "Diagnósticos automáticos. Pode parar durante jogos.", "temp"),
+    "PcaSvc": ("Assistente de Compatibilidade de Programas", "Monitora apps antigos para sugerir modos de "
+               "compatibilidade.", "manual"),
+    "lfsvc": ("Geolocalização", "Fornece localização para apps. Manual: inicia quando um app pedir.", "manual"),
+    "SEMgrSvc": ("Pagamentos e NFC", "Pagamentos por aproximação em notebooks com NFC.", "manual"),
+    "wisvc": ("Windows Insider", "Só necessário no programa Insider.", "manual"),
+    "WMPNetworkSvc": ("Compartilhamento de rede do Windows Media Player", "Streaming do WMP legado.", "manual"),
+    "RemoteRegistry": ("Registro Remoto", "Permite editar o registro pela rede (risco de segurança).", "manual"),
+    "PrintNotify": ("Notificações de Impressora", "Extensões de driver de impressora.", "manual"),
+    "stisvc": ("Aquisição de Imagens do Windows (WIA)", "Scanners e importação de câmeras. Manual: inicia "
+               "quando usar o scanner.", "manual"),
+    "diagnosticshub.standardcollector.service": ("Coletor do Hub de Diagnóstico", "Coleta para ferramentas "
+                                                 "de desenvolvedor.", "manual"),
+    "WdiServiceHost": ("Host do Serviço de Diagnóstico", "Diagnósticos automáticos.", "manual"),
+    "WdiSystemHost": ("Host do Sistema de Diagnóstico", "Diagnósticos automáticos.", "manual"),
+    "iphlpsvc": ("Auxiliar IP (IPv6 de transição)", "Túneis Teredo/6to4. Em raros casos o chat de grupo do "
+                 "Xbox usa Teredo.", "manual"),
 }
+
+# Perfis: serviço -> (conservador, avançado, extremo). None = não altera, "demand" = Manual, "disabled".
+# Todos revertíveis: o tipo de inicialização original é salvo no backup.
+PROFILES = {
+    "DiagTrack": ("demand", "disabled", "disabled"),
+    "dmwappushservice": ("demand", "disabled", "disabled"),
+    "MapsBroker": ("demand", "disabled", "disabled"),
+    "RetailDemo": ("demand", "disabled", "disabled"),
+    "Fax": ("demand", "demand", "disabled"),
+    "edgeupdate": ("demand", "demand", "demand"),
+    "edgeupdatem": ("demand", "demand", "demand"),
+    "gupdate": ("demand", "demand", "demand"),
+    "gupdatem": ("demand", "demand", "demand"),
+    "AdobeARMservice": ("demand", "demand", "demand"),
+    "RemoteRegistry": ("disabled", "disabled", "disabled"),
+    "wisvc": ("demand", "demand", "disabled"),
+    "WMPNetworkSvc": ("demand", "disabled", "disabled"),
+    "diagnosticshub.standardcollector.service": ("demand", "demand", "disabled"),
+    "PcaSvc": (None, "demand", "demand"),
+    "TrkWks": (None, "demand", "demand"),
+    "lfsvc": (None, "demand", "demand"),
+    "SEMgrSvc": (None, "demand", "demand"),
+    "WerSvc": (None, "demand", "disabled"),
+    "SysMain": (None, "demand", "disabled"),
+    "PhoneSvc": (None, "demand", "demand"),
+    "WpcMonSvc": (None, "demand", "demand"),
+    "WSearch": (None, None, "disabled"),
+    "Spooler": (None, None, "demand"),
+    "PrintNotify": (None, None, "demand"),
+    "stisvc": (None, None, "demand"),
+    "WdiServiceHost": (None, None, "demand"),
+    "WdiSystemHost": (None, None, "demand"),
+    "iphlpsvc": (None, None, "demand"),
+    "DPS": (None, None, "demand"),
+}
+PROFILE_INDEX = {"conservador": 0, "avancado": 1, "extremo": 2}
+PROFILE_NOTES = {
+    "conservador": "Só telemetria, atualizadores de terceiros e serviços sem uso doméstico. Zero impacto perceptível.",
+    "avancado": "Inclui SysMain, compatibilidade e diagnóstico em Manual. Recomendado para PCs de jogos com SSD.",
+    "extremo": "Desativa a indexação de busca (busca do Iniciar mais lenta, sem busca no Outlook) e coloca "
+               "impressão/scanner em Manual (a impressora para de funcionar até reverter).",
+}
+_RANK = {"boot": 0, "system": 0, "auto": 1, "delayed-auto": 2, "demand": 3, "disabled": 4}
 
 _START_MAP = {"automatic": "auto", "manual": "demand", "disabled": "disabled"}
 _LABEL = {"auto": "Automático", "delayed-auto": "Automático (atraso)", "demand": "Manual",
@@ -129,6 +188,72 @@ def set_manual(name: str, journal: Journal) -> tuple[bool, str]:
     journal.add_action(gid, {"kind": "service_start", "name": name, "start": s["start"],
                              "desc": f"Restaurar inicialização de {name} ({s['start_label']})"})
     return True, f"{name} definido como Manual (revertível)."
+
+
+def set_start(name: str, start: str, journal: Journal) -> tuple[bool, str]:
+    """Altera o tipo de inicialização (demand/disabled), guardando o original. Nunca torna mais 'ativo'."""
+    if name.lower() in PROTECTED or start not in ("demand", "disabled"):
+        return False, f"{name} é protegido."
+    s = get_service(name)
+    if not s:
+        return False, f"Serviço {name} não existe nesta versão do Windows."
+    if _RANK.get(s["start"], 3) >= _RANK[start]:
+        return True, f"{s['display']} já está como {s['start_label']}."
+    gid = f"service:{name}"
+    r = run(["sc.exe", "config", name, "start=", start])
+    if r.returncode != 0:
+        return False, f"Falha em {name}: {r.stdout.strip()[:150]}"
+    if not journal.has_group(gid):  # guarda só o tipo ORIGINAL (primeira alteração)
+        journal.group(gid, f"Serviço {CATALOG.get(name, (name,))[0]} → {_LABEL[start]}", "servicos")
+        journal.add_action(gid, {"kind": "service_start", "name": name, "start": s["start"],
+                                 "desc": f"Restaurar inicialização de {name} ({s['start_label']})"})
+    if start == "disabled" and s["status"] == "running":
+        run(["sc.exe", "stop", name], timeout=30)
+        journal.add_action(gid, {"kind": "service_running", "name": name, "desc": f"Reiniciar {name}"})
+    return True, f"{CATALOG.get(name, (name,))[0]} → {_LABEL[start]}"
+
+
+def detailed_status() -> list[dict]:
+    """Catálogo com consumo de RAM do processo hospedeiro, compartilhamento e alvo de cada perfil."""
+    pid_count: dict[int, int] = {}
+    if IS_WINDOWS:
+        for svc in psutil.win_service_iter():
+            try:
+                pid = svc.pid()
+            except Exception:
+                continue
+            if pid:
+                pid_count[pid] = pid_count.get(pid, 0) + 1
+    out = []
+    for s in catalog_status():
+        mem = 0
+        if s.get("pid"):
+            try:
+                mem = psutil.Process(s["pid"]).memory_info().rss
+            except psutil.Error:
+                pass
+        s["mem"] = mem
+        s["shared"] = pid_count.get(s.get("pid") or -1, 0) > 1
+        s["profiles"] = PROFILES.get(s["name"], (None, None, None))
+        out.append(s)
+    return out
+
+
+def profile_plan(profile: str) -> list[dict]:
+    """Lista de mudanças do perfil para os serviços existentes nesta máquina."""
+    idx = PROFILE_INDEX[profile]
+    out = []
+    for name, targets in PROFILES.items():
+        target = targets[idx]
+        if not target:
+            continue
+        s = get_service(name)
+        if not s or _RANK.get(s["start"], 3) >= _RANK[target]:
+            continue
+        label, desc, _rec = CATALOG.get(name, (name, "", ""))
+        out.append({"name": name, "label": label, "desc": desc, "current": s["start_label"],
+                    "target": target, "target_label": _LABEL[target], "status": s["status"]})
+    return out
 
 
 def restore_start(name: str, journal: Journal) -> list[str]:

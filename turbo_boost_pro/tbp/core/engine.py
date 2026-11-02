@@ -63,29 +63,39 @@ class Engine:
         return settings.get("current_mode")
 
     # ================================================================ blocos de plano
+    def _track(self, gid: str | None, key: str, value):
+        """Registra no grupo do perfil (TURBO, Gaming Edition, Ultra Lite) o que ele aplicou."""
+        if not gid:
+            return
+        g = self.journal.group(gid)
+        lst = g["meta"].setdefault(key, [])
+        if value not in lst:
+            lst.append(value)
+        self.journal.save()
+
     def _tweak_actions(self, ids: list[str], section: str, only_pending: bool = True,
-                       track_turbo: bool = False) -> list[Action]:
+                       track_turbo: bool = False, track_gid: str | None = None) -> list[Action]:
+        from .winver import build_number
+        build = build_number()
+        track_gid = TURBO_GID if track_turbo else track_gid
         out = []
         for tid in ids:
             t = TWEAKS_BY_ID[tid]
+            if t.min_build and build and build < t.min_build:
+                continue
             st = t.status()
             if st == "indisponivel" or (only_pending and st == "aplicado"):
                 continue
 
             def _run(t=t):
                 t.apply(self.journal)
-                if track_turbo:
-                    g = self.journal.group(TURBO_GID)
-                    lst = g["meta"].setdefault("tweaks", [])
-                    if t.id not in lst:
-                        lst.append(t.id)
-                    self.journal.save()
+                self._track(track_gid, "tweaks", t.id)
                 return f"✔ {t.title}"
             out.append(Action(f"tweak:{t.id}", section, t.title, [t.description] + t.preview_lines(), _run,
-                              admin=t.requires_admin(), critical=True, note=t.note))
+                              admin=t.requires_admin(), critical=True, note=t.note, selected=t.risk == "Baixo"))
         return out
 
-    def _power_action(self, track_turbo=False) -> list[Action]:
+    def _power_action(self, track_turbo=False, track_gid: str | None = None) -> list[Action]:
         if power.is_turbo_active():
             return []
         bat = psutil.sensors_battery() if hasattr(psutil, "sensors_battery") else None
@@ -94,6 +104,8 @@ class Engine:
             msg = power.apply_turbo_plan(self.journal)
             if track_turbo:
                 self.journal.set_meta(TURBO_GID, "power", True)
+            if track_gid:
+                self.journal.set_meta(track_gid, "power", True)
             return "✔ " + msg
         return [Action("power", "Energia e processador", "Plano de energia TURBO BOOST PRO (desempenho máximo)",
                        power.preview(bool(bat and not bat.power_plugged)), _run, critical=True)]

@@ -112,6 +112,7 @@ class Journal:
         with self._lock:
             self.group(gid)["actions"].append(action)
             self.save()
+        log.info("AÇÃO registrada [%s] %s", gid, action.get("desc") or action.get("kind"))
 
     # ------------------------------------------------------------ reversão
     def revert_group(self, gid: str) -> list[str]:
@@ -197,6 +198,18 @@ class Journal:
                     flags = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
                     subprocess.Popen(a.get("cmdline") or [exe], close_fds=True, creationflags=flags,
                                      cwd=os.path.dirname(exe))
+        elif kind in ("appx", "feature", "capability", "task"):
+            from . import system_mods
+            system_mods.revert_action(a)
+        elif kind == "file":
+            target, backup = a["path"], a.get("backup")
+            if not target.lower().endswith(".cfg"):
+                raise ValueError("arquivo de reversão não permitido")
+            if backup and os.path.exists(backup) and os.path.dirname(os.path.abspath(backup)) == \
+                    os.path.abspath(str(BACKUP_DIR)):
+                shutil.copy2(backup, target)
+            elif not backup and os.path.exists(target):
+                os.remove(target)
         else:
             raise ValueError(f"tipo desconhecido {kind}")
 

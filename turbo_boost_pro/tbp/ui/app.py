@@ -20,6 +20,7 @@ PAGES = [
     ("cleaner", "🧹  Limpeza", "cleaner.CleanerPage"),
     ("performance", "📊  Desempenho", "performance.PerformancePage"),
     ("advanced", "⚙  Windows Avançado", "advanced.AdvancedPage"),
+    ("ultralite", "🪶  Windows Ultra Lite", "ultralite.UltraLitePage"),
     ("diagnostics", "🔍  Diagnóstico", "diagnostics.DiagnosticsPage"),
     ("security", "🛡  Segurança", "security.SecurityPage"),
 ]

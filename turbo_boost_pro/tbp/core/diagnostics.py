@@ -160,6 +160,20 @@ def analyze(monitor=None, progress=None) -> Report:
         if bat and not bat.power_plugged:
             F(Finding("info", "Energia", "Notebook na bateria",
                       "Na bateria, CPU e GPU operam com limites menores. Para jogar, conecte o carregador."))
+    if IS_WINDOWS:
+        from . import registry as _reg
+        ok, _t, hv = _reg.read_value("HKLM", r"SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios"
+                                     r"\HypervisorEnforcedCodeIntegrity", "Enabled")
+        if ok and hv == 1:
+            F(Finding("info", "Jogos", "Integridade de Memória (HVCI) ativada",
+                      "Protege contra drivers maliciosos, mas custa de 3% a 10% de FPS em alguns jogos. O TURBO "
+                      "BOOST PRO NÃO desativa este recurso de segurança. Se quiser testar, desligue manualmente em "
+                      "Segurança do Windows › Segurança do dispositivo › Isolamento de núcleo, ciente do risco."))
+        from . import ultralite as _ul
+        if not _ul.is_active(_ul.ULTRA_GID):
+            F(Finding("medio", "Windows", "WINDOWS ULTRA LITE não aplicado",
+                      "Apps pré-instalados, serviços, tarefas de telemetria e recursos opcionais ainda ativos "
+                      "consomem RAM e CPU em segundo plano.", "page:ultralite", "Abrir Ultra Lite"))
     tweak_checks = [("game_mode", "alto"), ("game_dvr_off", "medio"), ("mmcss_games", "medio"),
                     ("windowed_opt", "medio"), ("hags", "info"), ("power_throttling_off", "medio"),
                     ("visual_anim", "info"), ("bg_apps", "medio"), ("widgets_off", "info"), ("edge_bg", "info"),

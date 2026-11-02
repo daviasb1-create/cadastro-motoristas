@@ -34,7 +34,7 @@ Resultado:
 | Arquivo | O que é |
 |---|---|
 | `dist\TurboBoostPro\TurboBoostPro.exe` | Executável (modo pasta: abre mais rápido que arquivo único) |
-| `installer\Output\TurboBoostPro_Setup_1.0.0.exe` | Instalador com atalhos e desinstalador (requer [Inno Setup 6](https://jrsoftware.org/isdl.php) instalado) |
+| `installer\Output\TurboBoostPro_Setup_1.1.0.exe` | Instalador com atalhos e desinstalador (requer [Inno Setup 6](https://jrsoftware.org/isdl.php) instalado) |
 
 > O app abre como **usuário comum** e só pede administrador quando você usa um recurso que exige
 > (botão "Elevar para admin" na barra lateral, ou o aviso que aparece na prévia de cada ação).
@@ -67,6 +67,29 @@ Resultado:
 | **Windows Avançado** | Responsividade, efeitos visuais, plano de energia, DNS (teste de latência offline + troca reversível), TRIM/desfragmentação/NTFS, apps de segundo plano, Widgets, Edge em segundo plano, sugestões, telemetria mínima, P2P de atualizações |
 | **Diagnóstico** | Mede uso por 6 s, identifica gargalo (CPU/GPU/RAM/disco), RAM em canal único, Windows em HD, disco cheio, temperatura, uptime, plano de energia, ajustes pendentes, inicialização, serviços e processos pesados. Nota 0-100 e **relatório HTML** |
 | **Segurança** | RESTAURAR TUDO, histórico de alterações com reversão individual, ponto de restauração, backups e logs |
+
+---
+
+## 3.1 WINDOWS ULTRA LITE (novo na versão 1.1)
+
+Aba **🪶 Windows Ultra Lite**. Deixa o Windows 11 enxuto sem formatar. Execute como **administrador**.
+
+| Sub-aba | O que faz de verdade | Como desfaz |
+|---|---|---|
+| **Visão geral** | Verifica a versão/edição do Windows; botões **APLICAR ULTRA LITE**, **GAMING EDITION** (liga/desliga) e **RESTAURAR WINDOWS ORIGINAL** | Botão DESATIVAR em cada perfil ou RESTAURAR |
+| **Gaming Edition** | Plano de energia TURBO, Game Mode, MMCSS, HAGS, prioridade de primeiro plano, mouse/teclado sem atraso, efeitos visuais mínimos, timer 0,5 ms, boost automático de jogos. **CS2**: prioridade Alta de CPU/E-S permanente (IFEO), GPU dedicada, `autoexec.cfg` opcional, opções de inicialização e configurações de vídeo recomendadas | Um clique (DESATIVAR PERFIL) |
+| **Debloat** | Lista apps pré-instalados (Notícias, Clima, Solitaire, Copilot, Widgets, Teams, Clipchamp, atalhos promocionais…) com seleção individual. Remove só para o seu usuário (`Remove-AppxPackage`) | Reinstalação offline (`Add-AppxPackage -Register` da cópia do sistema) ou pela Store |
+| **Serviços** | Tabela com finalidade, estado, tipo de inicialização e RAM de cada serviço. Perfis **Conservador / Avançado / Extremo** | Restaurar serviços (tipo original salvo) |
+| **Registro** | Todos os 37 ajustes com chave, valor atual → novo e efeito documentado. Aplicação individual com backup | Desligar o ajuste |
+| **Recursos e tarefas** | Recursos opcionais (XPS, Fax, PowerShell 2.0, SMB1, IE, Recall, Hyper-V opcional…) e 17 tarefas agendadas de telemetria | Reativação offline (recursos não são apagados) |
+| **Comparação** | Mede RAM, processos, serviços, CPU em repouso, tempo de boot, espaço livre e apps na inicialização, antes/depois, com diferença em % | - |
+| **Log** | Todas as operações em tempo real (`%LOCALAPPDATA%\TurboBoostPro\logs`) | - |
+
+**Nunca alterados:** Defender, Firewall, Windows Update/BITS/UsoSvc, Microsoft Store (e seus frameworks), Xbox Identity/Gaming Services, áudio, Bluetooth, rede (DHCP, DNS, Wi-Fi), Plug and Play, drivers e codecs.
+
+**Não implementado de propósito:** desligar a Integridade de Memória (HVCI/VBS). Ela pode custar 3-10% de FPS, mas é uma proteção de segurança; o Diagnóstico informa o estado e você decide manualmente.
+
+**Como medir o ganho:** Comparação › Medir agora → aplicar → **reiniciar** → esperar 2 min → Medir agora.
 
 ---
 

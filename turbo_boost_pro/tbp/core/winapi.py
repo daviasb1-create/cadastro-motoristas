@@ -116,6 +116,22 @@ def apply_mouse_settings_live():
         log.warning("Falha ao aplicar mouse: %s", e)
 
 
+def apply_keyboard_settings_live():
+    """Aplica atraso/velocidade de repetição do teclado sem logoff."""
+    if not IS_WINDOWS:
+        return
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Control Panel\Keyboard") as k:
+            delay = int(winreg.QueryValueEx(k, "KeyboardDelay")[0])
+            speed = int(winreg.QueryValueEx(k, "KeyboardSpeed")[0])
+        SPI_SETKEYBOARDSPEED, SPI_SETKEYBOARDDELAY = 0x000B, 0x0017
+        user32.SystemParametersInfoW(SPI_SETKEYBOARDDELAY, delay, None, 0x3)
+        user32.SystemParametersInfoW(SPI_SETKEYBOARDSPEED, speed, None, 0x3)
+    except Exception as e:  # pragma: no cover
+        log.warning("Falha ao aplicar teclado: %s", e)
+
+
 def apply_visual_settings_live():
     """Aplica imediatamente animações de janela/menus conforme o registro."""
     if not IS_WINDOWS:
