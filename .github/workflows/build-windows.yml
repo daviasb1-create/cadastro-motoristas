@@ -53,13 +53,23 @@ jobs:
           python assets/make_icon.py
           pyinstaller --noconfirm --clean turbo_boost_pro.spec
 
-      - name: Verificar se o .exe abre
+      - name: Autoteste do .exe (importa todas as paginas e modulos)
+        run: |
+          $p = Start-Process -FilePath "dist\TurboBoostPro\TurboBoostPro.exe" -ArgumentList "--selftest" -PassThru
+          if (-not $p.WaitForExit(90000)) { Stop-Process -Id $p.Id -Force; Write-Error "Autoteste travou"; exit 1 }
+          Get-Content "$env:LOCALAPPDATA\TurboBoostPro\selftest.txt"
+          if ($p.ExitCode -ne 0) { Write-Error "Autoteste falhou (codigo $($p.ExitCode))"; exit 1 }
+
+      - name: Verificar se a janela principal abre (sem janela de erro)
         run: |
           $p = Start-Process -FilePath "dist\TurboBoostPro\TurboBoostPro.exe" -PassThru
-          Start-Sleep -Seconds 15
+          Start-Sleep -Seconds 20
+          $p.Refresh()
           if ($p.HasExited) { Write-Error "O executavel fechou sozinho (codigo $($p.ExitCode))"; exit 1 }
+          $title = $p.MainWindowTitle
+          Write-Host "Titulo da janela: '$title'"
+          if ($title -notlike "TURBO BOOST PRO*") { Write-Error "Janela principal nao abriu (titulo: '$title')"; exit 1 }
           Stop-Process -Id $p.Id -Force
-          Write-Host "Executavel abriu e ficou estavel por 15 s."
 
       - name: Gerar instalador
         run: |

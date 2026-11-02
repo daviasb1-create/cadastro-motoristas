@@ -34,7 +34,7 @@ Resultado:
 | Arquivo | O que é |
 |---|---|
 | `dist\TurboBoostPro\TurboBoostPro.exe` | Executável (modo pasta: abre mais rápido que arquivo único) |
-| `installer\Output\TurboBoostPro_Setup_1.1.0.exe` | Instalador com atalhos e desinstalador (requer [Inno Setup 6](https://jrsoftware.org/isdl.php) instalado) |
+| `installer\Output\TurboBoostPro_Setup_1.1.1.exe` | Instalador com atalhos e desinstalador (requer [Inno Setup 6](https://jrsoftware.org/isdl.php) instalado) |
 
 > O app abre como **usuário comum** e só pede administrador quando você usa um recurso que exige
 > (botão "Elevar para admin" na barra lateral, ou o aviso que aparece na prévia de cada ação).

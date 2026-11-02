@@ -3,7 +3,10 @@
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 datas = collect_data_files("customtkinter") + [("assets/icon.ico", "assets"), ("assets/icon.png", "assets")]
-hidden = collect_submodules("tbp") + ["win32pdh", "win32com.client", "pythoncom", "win32timezone"]
+# As páginas são carregadas sob demanda (importlib): listadas explicitamente para entrarem no .exe
+PAGES = ["dashboard", "gaming", "cleaner", "performance", "advanced", "ultralite", "diagnostics", "security"]
+hidden = (collect_submodules("tbp") + ["tbp.ui", "tbp.ui.pages"] + [f"tbp.ui.pages.{p}" for p in PAGES]
+          + ["win32pdh", "win32com.client", "pythoncom", "win32timezone"])
 
 a = Analysis(
     ["main.py"],
