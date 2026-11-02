@@ -109,3 +109,58 @@ def test_bench_stats_from_presentmon_csv(tmp_path=None):
     rows = bench.compare(s, dict(s, fps_1low=s["fps_1low"] * 1.10))
     assert bench.verdict(rows).startswith("GANHO")
     assert bench.verdict(bench.compare(s, dict(s))).startswith("Sem diferença")
+
+
+def test_autoopt_decision_respects_margin():
+    from tbp.core import autoopt
+    base = [{"fps_avg": 300 + d, "fps_1low": 200 + d, "fps_01low": 120, "ft_std": 1.0} for d in (-2, 0, 2)]
+    same = [{"fps_avg": 301 + d, "fps_1low": 201 + d, "fps_01low": 121, "ft_std": 1.0} for d in (-2, 0, 2)]
+    better = [{"fps_avg": 305 + d, "fps_1low": 230 + d, "fps_01low": 130, "ft_std": 0.8} for d in (-2, 0, 2)]
+    worse = [{"fps_avg": 280 + d, "fps_1low": 180 + d, "fps_01low": 110, "ft_std": 1.3} for d in (-2, 0, 2)]
+    assert autoopt.decide(base, same)["verdict"] == "igual"
+    assert autoopt.decide(base, better)["verdict"] == "melhor"
+    assert autoopt.decide(base, worse)["verdict"] == "pior"
+    assert autoopt.decide(base, [{"failed": True}])["verdict"] == "instável"
+
+
+def test_autoopt_runner_end_to_end_manual(monkeypatch=None):
+    """Roteiro completo com captura simulada: aplica/reverte variáveis e escolhe só o que melhora."""
+    import random
+    from tbp.core import autoopt, bench, registry as reg
+
+    def fake_capture(process, seconds, label, monitor, progress, save=False, live=None, cancel=None):
+        gm_off = reg.read_value("HKCU", r"Software\Microsoft\GameBar", "AutoGameModeEnabled")[2] == 0
+        boost = 25 if gm_off else 0  # simula: desligar o Game Mode melhora o 1% low neste "PC"
+        r = random.uniform(-1, 1)
+        if live:
+            live({"frametimes": [3.3, 3.4], "cpu": 50})
+        return {"fps_avg": 300 + r + boost / 5, "fps_1low": 200 + r + boost, "fps_01low": 120, "ft_std": 1.0,
+                "ft_avg": 3.3, "frames": 9000}
+    orig = bench.capture
+    bench.capture = fake_capture
+    try:
+        reg.write_value("HKCU", r"Software\Microsoft\GameBar", "AutoGameModeEnabled", reg.REG_DWORD, 1)
+        runner = autoopt.Runner()
+        runner.ask = lambda text: True
+        import tbp.core.autoopt as ao
+        real_sleep = ao.time.sleep
+        ao.time.sleep = lambda s: None
+        runner.start(["game_mode", "timer", "purge"], reps=3, seconds=1, mode="manual", process="x.exe")
+        runner.thread.join(30)
+        sess = autoopt.current_session()
+        assert sess["status"] == "done", sess.get("error")
+        assert sess["results"]["game_mode"]["verdict"] == "melhor"
+        assert sess["results"]["timer"]["verdict"] == "igual"
+        assert reg.read_value("HKCU", r"Software\Microsoft\GameBar", "AutoGameModeEnabled")[2] == 1  # revertido
+        best = autoopt.best_config(sess)
+        assert [b["var"] for b in best] == ["game_mode"]
+        autoopt.apply_best(sess)
+        assert reg.read_value("HKCU", r"Software\Microsoft\GameBar", "AutoGameModeEnabled")[2] == 0
+        autoopt.restore_all()
+        assert reg.read_value("HKCU", r"Software\Microsoft\GameBar", "AutoGameModeEnabled")[2] == 1
+    finally:
+        bench.capture = orig
+        try:
+            ao.time.sleep = real_sleep
+        except NameError:
+            pass

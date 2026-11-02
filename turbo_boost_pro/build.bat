@@ -27,7 +27,7 @@ pyinstaller --noconfirm --clean turbo_boost_pro.spec || (echo [ERRO] PyInstaller
 echo [4/4] Gerando instalador (se o Inno Setup estiver instalado)...
 set ISCC="%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
 if exist %ISCC% (
-  %ISCC% installer\turbo_boost_pro.iss && echo Instalador: installer\Output\TurboBoostPro_Setup_1.2.0.exe
+  %ISCC% installer\turbo_boost_pro.iss && echo Instalador: installer\Output\TurboBoostPro_Setup_1.3.0.exe
 ) else (
   echo Inno Setup 6 nao encontrado: instale em https://jrsoftware.org/isdl.php para gerar o Setup.exe
 )

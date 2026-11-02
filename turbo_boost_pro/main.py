@@ -18,9 +18,9 @@ def _selftest() -> int:
     import traceback
     mods = ["tbp.core." + m for m in ("engine", "ultralite", "system_mods", "services", "snapshot", "diagnostics",
                                       "cleaner", "network", "storage", "gaming", "winver", "monitor", "bench", "analysis2",
-                                      "stage2")]
+                                      "stage2", "autoopt", "cs2_control")]
     mods += ["tbp.ui.app"] + ["tbp.ui.pages." + p for p in ("dashboard", "gaming", "cleaner", "performance",
-                                                             "advanced", "ultralite", "competitive", "diagnostics",
+                                                             "advanced", "ultralite", "competitive", "autoopt", "diagnostics",
                                                              "security")]
     out = []
     code = 0

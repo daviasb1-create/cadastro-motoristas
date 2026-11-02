@@ -34,7 +34,7 @@ Resultado:
 | Arquivo | O que é |
 |---|---|
 | `dist\TurboBoostPro\TurboBoostPro.exe` | Executável (modo pasta: abre mais rápido que arquivo único) |
-| `installer\Output\TurboBoostPro_Setup_1.2.0.exe` | Instalador com atalhos e desinstalador (requer [Inno Setup 6](https://jrsoftware.org/isdl.php) instalado) |
+| `installer\Output\TurboBoostPro_Setup_1.3.0.exe` | Instalador com atalhos e desinstalador (requer [Inno Setup 6](https://jrsoftware.org/isdl.php) instalado) |
 
 > O app abre como **usuário comum** e só pede administrador quando você usa um recurso que exige
 > (botão "Elevar para admin" na barra lateral, ou o aviso que aparece na prévia de cada ação).
@@ -106,6 +106,37 @@ Aba **🎯 Competitivo (CS2)**. Foco em desempenho real medido em jogo, não em 
 | **Ajustes rejeitados** | 15 ajustes populares avaliados e não aplicados, com o motivo |
 
 **Mudanças de comportamento:** o timer de 0,5 ms não é mais ativado automaticamente (só se o teste A/B aprovar), e o cache em espera da RAM não é mais esvaziado em jogos, porque isso causa travadas.
+
+---
+
+## 3.3 AUTO OPTIMIZER · TURBO BENCHMARK AI (novo na versão 1.3)
+
+Aba **🧪 Auto Optimizer**: um laboratório que testa configurações do Windows **uma de cada vez** no CS2 e aplica só o que comprovadamente melhora.
+
+**Ferramentas usadas (incluídas no instalador, sem instalação extra):**
+- **PresentMon** (Intel, licença MIT): mede frametime, FPS, 1% low e latência via eventos ETW do Windows. Não injeta código no jogo.
+- **Console de rede do CS2** (`-netconport`, recurso oficial do motor Source 2): carrega a demo e volta sempre ao mesmo tick, para que todas as medições mostrem as mesmas cenas. Não usa `-insecure`; o VAC continua ativo.
+- **Temperaturas:** sensores do Windows ou o LibreHardwareMonitor, se estiver aberto. Quando não há sensor, a interface mostra N/D e nenhum valor é inventado.
+
+**Como usar:**
+1. **ANALISAR MEU PC**: identifica o hardware e registra a configuração atual.
+2. Escolha uma demo `.dem` do CS2 (uma partida sua: `record tbp` e `stop` no console) e o tick inicial. Sem demo, use o modo **Manual**, que funciona com qualquer jogo.
+3. **INICIAR BENCHMARK** mede a configuração atual. **OTIMIZAR AUTOMATICAMENTE** testa as variáveis marcadas.
+4. Veja os **Resultados**: cada ajuste com a variação percentual, a margem de erro e o veredito (MELHOR, IGUAL, PIOR ou INSTÁVEL).
+5. **APLICAR MELHOR CONFIGURAÇÃO** aplica só os vencedores. **RESTAURAR CONFIGURAÇÕES** desfaz tudo.
+
+**Método:**
+- Repetições intercaladas (A, B, B, A, A, B…) para cancelar aquecimento e oscilações do sistema.
+- Uma diferença só conta quando supera 2 erros-padrão e o ruído mínimo de cada métrica.
+- Prioridade das métricas: 1% low, depois FPS médio, variação do frametime e 0,1% low.
+- No fim, a combinação vencedora é validada contra a linha de base.
+
+**Segurança:**
+- Ponto de restauração e backup antes de começar.
+- Cada configuração é revertida logo após a medição.
+- Uma falha ou cancelamento reverte tudo o que o teste alterou. Se o PC desligar no meio do teste, a reversão acontece na próxima abertura do app.
+- Os testes que exigem reiniciar o PC são opcionais e continuam sozinhos após o login.
+- Nunca altera BIOS, clocks, tensões ou recursos de segurança.
 
 ---
 

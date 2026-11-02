@@ -118,6 +118,58 @@ except bench.BenchError as e:
     check("quadro" in str(e).lower(), f"Benchmark PresentMon executou (sem GPU no CI): {e}")
 print("   PresentMon:", bench.presentmon_path())
 
+# ---------------------------------------------------------------- AUTO OPTIMIZER (captura simulada; variáveis REAIS)
+import random  # noqa: E402
+from tbp.core import autoopt  # noqa: E402
+
+plan_before = power.active_plan()
+cpm_before = power.read_setting("CPMINCORES")
+gm_before = reg.read_value("HKCU", r"Software\Microsoft\GameBar", "AutoGameModeEnabled")
+
+
+def fake_capture(process, seconds, label, monitor, progress, save=False, live=None, cancel=None):
+    st = power.active_plan() or {}
+    boost = 30 if st.get("name") == power.PLAN_NAME and settings_get("cpu_profile") == "competitivo" else 0
+    r = random.uniform(-1, 1)
+    return {"fps_avg": 300 + r + boost / 4, "fps_1low": 200 + r + boost, "fps_01low": 120 + r, "ft_std": 1.0,
+            "ft_avg": 3.3, "frames": 9000}
+
+
+def settings_get(k):
+    from tbp.config import settings
+    return settings.get(k)
+
+
+real_capture = bench.capture
+bench.capture = fake_capture
+try:
+    rn = autoopt.Runner()
+    rn.ask = lambda text: True
+    vids = ["plan_comp", "parking", "sysmain", "bg_services", "game_mode", "timer"]
+    rn.start(vids, reps=2, seconds=1, mode="manual", process="dwm.exe")
+    rn.thread.join(900)
+    sess = autoopt.current_session()
+    check(sess["status"] == "done", f"Auto Optimizer concluiu o roteiro ({sess['status']} {sess.get('error', '')})")
+    verdicts = {k: v["verdict"] for k, v in sess.get("results", {}).items()}
+    print("   veredictos:", verdicts)
+    check(verdicts.get("plan_comp") == "melhor", "Detectou o ajuste que melhora (plano competitivo simulado)")
+    check(all(verdicts.get(v) in ("igual", None) for v in ("sysmain", "bg_services", "timer")),
+          "Não recomendou ajustes sem ganho (dentro da margem)")
+    check(power.active_plan() == plan_before, f"Plano de energia restaurado após os testes ({power.active_plan()})")
+    check(power.read_setting("CPMINCORES") == cpm_before, "Estacionamento de núcleos restaurado")
+    check(reg.read_value("HKCU", r"Software\Microsoft\GameBar", "AutoGameModeEnabled") == gm_before,
+          "Game Mode restaurado")
+    print("   aplicar melhor:", autoopt.apply_best(sess))
+    check((power.active_plan() or {}).get("name") == power.PLAN_NAME, "Melhor configuração aplicada (plano TURBO)")
+    errs = autoopt.restore_all()
+    check(power.active_plan() == plan_before and not errs, f"RESTAURAR do Auto Optimizer ({errs})")
+    autoopt._create_resume_task()
+    q = pj(f"Get-ScheduledTask -TaskName '{autoopt._TASK}' -ErrorAction SilentlyContinue | Select-Object TaskName")
+    check(bool(q), "Tarefa de retomada após reinício criada")
+    autoopt._remove_resume_task()
+finally:
+    bench.capture = real_capture
+
 # ---------------------------------------------------------------- medição
 snap = snapshot.capture("CI", cpu_seconds=2, journal=engine.journal)
 check(snap["processes"] > 0 and snap["ram_used"] > 0, f"Medição: {snap['processes']} processos, "

@@ -149,7 +149,10 @@ def last_pair_by(key: str, process: str = "cs2.exe") -> tuple[dict, dict] | None
 
 
 def capture(process: str = "cs2.exe", seconds: int = 60, label: str = "", monitor=None,
-            progress: Callable[[float, str], None] | None = None, save: bool = True) -> dict:
+            progress: Callable[[float, str], None] | None = None, save: bool = True,
+            live: Callable[[dict], None] | None = None, cancel=None) -> dict:
+    """live(dict): chamado a cada segundo com frametimes recentes e sensores (gráficos em tempo real).
+    cancel: threading.Event opcional para interromper a captura."""
     from . import winapi
     if not IS_WINDOWS:
         raise BenchError("Benchmark disponível apenas no Windows.")
@@ -167,7 +170,8 @@ def capture(process: str = "cs2.exe", seconds: int = 60, label: str = "", monito
            "--stop_existing_session", "--session_name", "TurboBoostPro", "--no_console_stats"]
     log.info("BENCH %s", " ".join(cmd))
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, creationflags=CREATE_NO_WINDOW)
-    usage = {"cpu": [], "gpu": [], "ram": []}
+    usage = {"cpu": [], "gpu": [], "ram": [], "cpu_temp": [], "gpu_temp": []}
+    read_pos, ft_col_idx, recent = 0, None, []
     competitors: dict[str, float] = {}
     sample_procs = {}
     t0 = time.time()
@@ -182,6 +186,35 @@ def capture(process: str = "cs2.exe", seconds: int = 60, label: str = "", monito
         if snap.get("gpu") is not None:
             usage["gpu"].append(snap["gpu"])
         usage["ram"].append(snap.get("ram_used", psutil.virtual_memory().used))
+        for k in ("cpu_temp", "gpu_temp"):
+            if snap.get(k):
+                usage[k].append(snap[k])
+        if cancel is not None and cancel.is_set():
+            p.kill()
+            raise BenchError("Captura cancelada.")
+        if live:
+            try:  # lê o CSV enquanto o PresentMon grava (frametime ao vivo)
+                with open(out, "rb") as fh:
+                    fh.seek(read_pos)
+                    raw = fh.read()
+                cut = raw.rfind(b"\n") + 1  # só linhas completas
+                read_pos += cut
+                lines = raw[:cut].decode("utf-8", "replace").splitlines()
+                if ft_col_idx is None and lines and "," in lines[0] and not lines[0][:1].isdigit():
+                    head = lines[0].split(",")
+                    ft_col_idx = next((head.index(c) for c in FT_COLS if c in head), None)
+                    lines = lines[1:]
+                if ft_col_idx is not None:
+                    for ln in lines:
+                        parts = ln.split(",")
+                        if len(parts) > ft_col_idx and (v := _num(parts[ft_col_idx])):
+                            recent.append(v)
+                    del recent[:-600]
+            except OSError:
+                pass
+            live({"elapsed": el, "seconds": seconds, "frametimes": list(recent[-300:]), "cpu": usage["cpu"][-1],
+                  "gpu": usage["gpu"][-1] if usage["gpu"] else None, "cpu_temp": snap.get("cpu_temp"),
+                  "gpu_temp": snap.get("gpu_temp"), "ram": usage["ram"][-1]})
         if int(el) % 5 == 0:  # processos concorrentes (CPU fora do jogo)
             for q in psutil.process_iter(["pid", "name"]):
                 n = (q.info["name"] or "").lower()
@@ -206,6 +239,8 @@ def capture(process: str = "cs2.exe", seconds: int = 60, label: str = "", monito
         "seconds": seconds, "cpu_avg": round(statistics.mean(usage["cpu"]), 1) if usage["cpu"] else None,
         "gpu_avg": round(statistics.mean(usage["gpu"]), 1) if usage["gpu"] else None,
         "ram_used": int(statistics.mean(usage["ram"])) if usage["ram"] else None,
+        "cpu_temp_max": round(max(usage["cpu_temp"]), 1) if usage["cpu_temp"] else None,
+        "gpu_temp_max": round(max(usage["gpu_temp"]), 1) if usage["gpu_temp"] else None,
         "competitors": sorted(([n, round(c, 1)] for n, c in competitors.items() if c >= 1.0),
                               key=lambda x: -x[1])[:8],
         "config": config_snapshot(), "csv": out,

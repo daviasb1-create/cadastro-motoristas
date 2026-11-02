@@ -22,6 +22,7 @@ PAGES = [
     ("advanced", "⚙  Windows Avançado", "advanced.AdvancedPage"),
     ("ultralite", "🪶  Windows Ultra Lite", "ultralite.UltraLitePage"),
     ("competitive", "🎯  Competitivo (CS2)", "competitive.CompetitivePage"),
+    ("autoopt", "🧪  Auto Optimizer", "autoopt.AutoOptPage"),
     ("diagnostics", "🔍  Diagnóstico", "diagnostics.DiagnosticsPage"),
     ("security", "🛡  Segurança", "security.SecurityPage"),
 ]
@@ -58,6 +59,7 @@ class App(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self.shutdown)
         self.after(500, self._tick)
         self.after(300, self._poll_events)
+        self._init_autoopt()
 
     # ---------------------------------------------------------------- sidebar
     def _build_sidebar(self):
@@ -88,6 +90,25 @@ class App(ctk.CTk):
                           command=self._elevate).pack(fill="x", pady=(6, 0))
         ctk.CTkLabel(bottom, text=f"v{__version__} · 100% offline", font=T.font(10),
                      text_color=T.SUBTLE).pack(anchor="w", pady=(6, 0))
+
+    def _init_autoopt(self):
+        """Auto Optimizer: retoma após reinício ou reverte testes interrompidos por falha."""
+        import sys
+        from ..core import autoopt
+        self.autoopt_runner = autoopt.Runner(self.monitor)
+        resuming = "--resume-autoopt" in sys.argv
+        try:
+            msg = autoopt.recover_on_start(resuming)
+        except Exception as e:  # noqa: BLE001
+            msg = f"Auto Optimizer: falha na recuperação ({e})"
+        if msg == "resume":
+            def go():
+                self.show("autoopt")
+                self.autoopt_runner.resume()
+                self.notify("Auto Optimizer: continuando o teste após o reinício…", "game")
+            self.after(4000, go)
+        elif msg:
+            self.after(1500, lambda: self.notify(msg, "warn"))
 
     def _elevate(self):
         from .dialogs import ask_admin
