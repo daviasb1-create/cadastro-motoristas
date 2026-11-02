@@ -90,6 +90,10 @@ class Journal:
             self.data["originals"][k] = orig
         if gid not in orig["owners"]:
             orig["owners"].append(gid)
+            # pilha: cada grupo guarda o valor que existia ANTES da sua alteração
+            existed, typ, value = reg.read_value(hive, path, name)
+            orig.setdefault("stack", []).append({"gid": gid, "existed": existed, "type": typ,
+                                                 "value": reg.encode(typ, value)})
         g = self.group(gid)
         if k not in g["reg"]:
             g["reg"].append(k)
@@ -130,28 +134,51 @@ class Journal:
                 orig = self.data["originals"].get(k)
                 if not orig:
                     continue
-                if gid in orig["owners"]:
-                    orig["owners"].remove(gid)
-                if orig["owners"]:
-                    continue  # outro grupo ainda depende desta alteração
                 try:
-                    if orig["existed"]:
-                        reg.write_value(orig["hive"], orig["path"], orig["name"], orig["type"],
-                                        reg.decode(orig["type"], orig["value"]))
-                    else:
-                        reg.delete_value(orig["hive"], orig["path"], orig["name"])
-                    del self.data["originals"][k]
+                    self._revert_value(orig, gid)
+                    if gid in orig["owners"]:
+                        orig["owners"].remove(gid)
+                    if not orig["owners"]:
+                        del self.data["originals"][k]
                 except PermissionError:
-                    orig["owners"].append(gid)
                     errors.append(f"Sem permissão para restaurar {orig['hive']}\\{orig['path']}\\{orig['name']}")
                 except Exception as e:
-                    orig["owners"].append(gid)
                     errors.append(f"{orig['name']}: {e}")
             if not errors:
                 del self.data["groups"][gid]
             self.save()
         log.info("REVERT %s erros=%s", gid, errors)
         return errors
+
+    @staticmethod
+    def _write(orig, entry):
+        if entry["existed"]:
+            reg.write_value(orig["hive"], orig["path"], orig["name"], entry["type"],
+                            reg.decode(entry["type"], entry["value"]))
+        else:
+            reg.delete_value(orig["hive"], orig["path"], orig["name"])
+
+    def _revert_value(self, orig: dict, gid: str):
+        """Desfaz a alteração de 'gid' respeitando alterações posteriores de outros grupos:
+        - se 'gid' foi o último a alterar, restaura o valor anterior a ele;
+        - se outro grupo alterou depois, mantém o valor atual e repassa o 'valor anterior' para esse grupo."""
+        stack = orig.get("stack")
+        if stack is None:  # diário antigo (sem pilha): restaura o original quando o último dono sai
+            if [o for o in orig["owners"] if o != gid]:
+                return
+            self._write(orig, orig)
+            return
+        idx = next((i for i, e in enumerate(stack) if e["gid"] == gid), None)
+        if idx is None:
+            return
+        entry = stack[idx]
+        if idx == len(stack) - 1:
+            self._write(orig, entry)
+            stack.pop()
+        else:
+            nxt = stack[idx + 1]
+            nxt.update(existed=entry["existed"], type=entry["type"], value=entry["value"])
+            stack.pop(idx)
 
     def revert_all(self, prefix: str = "") -> list[str]:
         errors = []

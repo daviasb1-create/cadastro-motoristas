@@ -122,6 +122,9 @@ print("   PresentMon:", bench.presentmon_path())
 import random  # noqa: E402
 from tbp.core import autoopt  # noqa: E402
 
+power.set_plan(power.BALANCED)  # parte de um plano comum para o teste do plano competitivo fazer sentido
+from tbp.config import settings as _st  # noqa: E402
+_st.set("cpu_profile", None)
 plan_before = power.active_plan()
 cpm_before = power.read_setting("CPMINCORES")
 gm_before = reg.read_value("HKCU", r"Software\Microsoft\GameBar", "AutoGameModeEnabled")

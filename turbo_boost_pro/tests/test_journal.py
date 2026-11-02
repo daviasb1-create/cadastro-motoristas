@@ -164,3 +164,22 @@ def test_autoopt_runner_end_to_end_manual(monkeypatch=None):
             ao.time.sleep = real_sleep
         except NameError:
             pass
+
+
+def test_nested_changes_restore_previous_layer():
+    """A liga, B (teste) desliga: desfazer B volta ao valor de A; desfazer A volta ao original."""
+    j = new_journal()
+    reg.delete_value("HKCU", "TBPNest", "V")
+    j.reg_set("tweak:a", "HKCU", "TBPNest", "V", reg.REG_DWORD, 1)
+    j.reg_set("autoopt_test:b", "HKCU", "TBPNest", "V", reg.REG_DWORD, 0)
+    j.revert_group("autoopt_test:b")
+    assert reg.read_value("HKCU", "TBPNest", "V")[2] == 1
+    j.revert_group("tweak:a")
+    assert reg.read_value("HKCU", "TBPNest", "V")[0] is False
+    # ordem inversa de reversão
+    j.reg_set("tweak:a", "HKCU", "TBPNest", "V", reg.REG_DWORD, 1)
+    j.reg_set("autoopt_test:b", "HKCU", "TBPNest", "V", reg.REG_DWORD, 0)
+    j.revert_group("tweak:a")
+    assert reg.read_value("HKCU", "TBPNest", "V")[2] == 0  # B ainda ativo
+    j.revert_group("autoopt_test:b")
+    assert reg.read_value("HKCU", "TBPNest", "V")[0] is False
