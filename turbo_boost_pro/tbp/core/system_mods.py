@@ -405,6 +405,10 @@ def revert_action(a: dict):
         sizes = a.get("files") or []
         script = "$c = Get-CimInstance Win32_ComputerSystem; Set-CimInstance -InputObject $c -Property " \
                  "@{AutomaticManagedPagefile=$false}; "
+        keep = ",".join("'" + _check(_SAFE_PATH, f["name"], "arquivo de paginação") + "'" for f in sizes)
+        # remove arquivos de paginação criados pelo modo automático que não existiam antes
+        script += (f"Get-CimInstance Win32_PageFileSetting | Where-Object {{ $_.Name -notin @({keep}) }} | "
+                   "Remove-CimInstance; ")
         for f in sizes:
             name = _check(_SAFE_PATH, f["name"], "arquivo de paginação")
             ini, mx = int(f["initial"]), int(f["max"])

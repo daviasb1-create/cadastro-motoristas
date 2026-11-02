@@ -198,7 +198,8 @@ def capture(process: str = "cs2.exe", seconds: int = 60, label: str = "", monito
             raise BenchError("PresentMon não terminou no tempo esperado.")
     output = (p.stdout.read() or b"").decode(errors="replace") if p.stdout else ""
     if not os.path.exists(out):
-        raise BenchError("PresentMon não gerou dados. " + output.strip()[-300:])
+        raise BenchError("Nenhum quadro capturado: o processo não renderizou durante a captura (jogo minimizado, "
+                         "em tela de carregamento ou sem GPU). " + output.strip()[-200:])
     stats = parse_csv(out)
     stats.update({
         "id": int(time.time() * 1000), "time": time.time(), "label": label or "Benchmark", "process": process,
