@@ -34,7 +34,7 @@ Resultado:
 | Arquivo | O que é |
 |---|---|
 | `dist\TurboBoostPro\TurboBoostPro.exe` | Executável (modo pasta: abre mais rápido que arquivo único) |
-| `installer\Output\TurboBoostPro_Setup_1.1.1.exe` | Instalador com atalhos e desinstalador (requer [Inno Setup 6](https://jrsoftware.org/isdl.php) instalado) |
+| `installer\Output\TurboBoostPro_Setup_1.2.0.exe` | Instalador com atalhos e desinstalador (requer [Inno Setup 6](https://jrsoftware.org/isdl.php) instalado) |
 
 > O app abre como **usuário comum** e só pede administrador quando você usa um recurso que exige
 > (botão "Elevar para admin" na barra lateral, ou o aviso que aparece na prévia de cada ação).
@@ -90,6 +90,22 @@ Aba **🪶 Windows Ultra Lite**. Deixa o Windows 11 enxuto sem formatar. Execute
 **Não implementado de propósito:** desligar a Integridade de Memória (HVCI/VBS). Ela pode custar 3-10% de FPS, mas é uma proteção de segurança; o Diagnóstico informa o estado e você decide manualmente.
 
 **Como medir o ganho:** Comparação › Medir agora → aplicar → **reiniciar** → esperar 2 min → Medir agora.
+
+---
+
+## 3.2 COMPETITIVO (CS2) · Etapa 2 (novo na versão 1.2)
+
+Aba **🎯 Competitivo (CS2)**. Foco em desempenho real medido em jogo, não em números de RAM.
+
+| Sub-aba | O que faz |
+|---|---|
+| **Análise** | CPU (limite de desempenho, turbo, estacionamento, X3D/híbrida), RAM (XMP/EXPO, canal, paginação, compressão, paginação ativa), GPU (fabricante, driver, monitor abaixo da taxa máxima, HAGS, recomendações NVIDIA/AMD/Intel), latência (timer, DPC/ISR, ping/jitter/perda, economia de energia da placa de rede), disco (SSD/HDD, TRIM, otimização agendada, tempo de boot e itens que atrasaram) e processos que consomem CPU em repouso. Botão **APLICAR ETAPA 2**: somente o que ainda não foi aplicado |
+| **Modo CS2** | **JOGAR CS2 OTIMIZADO**: plano TURBO, serviços pausados e apps fechados; tudo volta ao fechar o jogo. Perfil do cs2.exe (prioridade Alta, GPU dedicada, tela cheia exclusiva opcional). Perfis de CPU **Competitivo** e **Eficiente** (menos calor) e estacionamento de núcleos |
+| **Benchmark** | PresentMon (Intel, MIT, sem injeção no jogo): FPS médio, 1% low, 0,1% low, frametime médio/P99/variação, travadas, latência, CPU ou GPU como limite, modo de apresentação, uso de CPU/GPU/RAM e processos concorrentes. Comparação com veredito que ignora diferenças dentro do ruído |
+| **Testes A/B** | Timer 0,5 ms (alterna automaticamente 4 × 20 s e decide pelo 1% low), HAGS, tela cheia exclusiva e perfil de CPU |
+| **Ajustes rejeitados** | 15 ajustes populares avaliados e não aplicados, com o motivo |
+
+**Mudanças de comportamento:** o timer de 0,5 ms não é mais ativado automaticamente (só se o teste A/B aprovar), e o cache em espera da RAM não é mais esvaziado em jogos, porque isso causa travadas.
 
 ---
 

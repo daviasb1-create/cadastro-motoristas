@@ -38,6 +38,24 @@ jobs:
           "version=$v" >> $env:GITHUB_OUTPUT
           Write-Host "Versao $v"
 
+      - name: Baixar PresentMon (Intel, MIT) para o benchmark
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          New-Item -ItemType Directory -Force tools | Out-Null
+          $h = @{ Authorization = "Bearer $env:GH_TOKEN"; "User-Agent" = "tbp-build" }
+          $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/GameTechDev/PresentMon/releases?per_page=20" -Headers $h
+          $asset = $rel | Where-Object { -not $_.prerelease } | ForEach-Object { $_.assets } |
+                   Where-Object { $_.name -match '^PresentMon-[0-9.]+-x64\.exe$' } | Select-Object -First 1
+          if (-not $asset) { Write-Error "Asset do PresentMon nao encontrado"; exit 1 }
+          Write-Host "PresentMon: $($asset.name)"
+          Invoke-WebRequest $asset.browser_download_url -OutFile tools\PresentMon.exe
+          try { Invoke-WebRequest https://raw.githubusercontent.com/GameTechDev/PresentMon/main/LICENSE.txt -OutFile tools\PresentMon-LICENSE.txt }
+          catch { Invoke-WebRequest https://raw.githubusercontent.com/GameTechDev/PresentMon/main/LICENSE -OutFile tools\PresentMon-LICENSE.txt }
+          $p = Start-Process tools\PresentMon.exe -ArgumentList "--process_name dwm.exe --output_file pmtest.csv --timed 3 --terminate_after_timed --stop_existing_session --session_name TBPCI --no_console_stats" -PassThru -Wait -NoNewWindow
+          Write-Host "PresentMon saiu com codigo $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { Write-Error "PresentMon nao aceitou os parametros"; exit 1 }
+
       - name: Testes (registro real do Windows)
         run: python -m pytest -q tests/test_journal.py
 

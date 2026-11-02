@@ -48,6 +48,10 @@ DEFAULT_SETTINGS = {
     "monitor_interval_ms": 1000,
     "custom_kill_list": [],
     "never_kill": ["discord.exe", "obs64.exe", "steam.exe"],
+    "timer_mode": "auto",          # auto = só após teste A/B aprovar; on/off
+    "timer_ab_result": None,
+    "presentmon_path": "",
+    "bench_seconds": 60,
 }
 
 

@@ -114,12 +114,12 @@ class Engine:
         st = memory.ram_status()
 
         def _run():
-            r = memory.optimize_ram(deep=True)
+            r = memory.optimize_ram(deep=False)  # sem esvaziar o cache em espera (evita travadas ao carregar)
             return f"✔ RAM: {fmt_bytes(r['freed'])} liberados ({r['processes']} processos compactados). {r['message']}"
         details = [f"Uso atual: {st['percent']:.0f}% ({fmt_bytes(st['used'])} de {fmt_bytes(st['total'])})",
                    "Compacta a memória de processos em segundo plano (nada é fechado)",
-                   "Com administrador: também esvazia o cache em espera (Standby List)"]
-        return Action("ram", "Memória RAM", "Liberar memória RAM", details, _run)
+                   "O cache em espera NÃO é esvaziado (isso faria o jogo reler texturas do disco)"]
+        return Action("ram", "Memória RAM", "Liberar memória RAM", details, _run, selected=st["percent"] > 70)
 
     def _bg_apps_actions(self, gid: str) -> list[Action]:
         out = []
@@ -203,10 +203,10 @@ class Engine:
             acts += self._tweak_actions([t.id for t in TWEAKS if t.turbo], "Máximo desempenho")
         if mode == "gamer":
             acts += self._tweak_actions([t.id for t in TWEAKS if t.gamer and not t.turbo], "Jogos")
-            acts.append(Action("timer", "Jogos", "Resolução de timer de 0,5 ms (enquanto o app estiver aberto)",
-                               ["Reduz a latência de agendamento do Windows para jogos.",
-                                "Desfeito automaticamente ao fechar o TURBO BOOST PRO."],
-                               lambda: f"✔ Timer: {winapi.set_timer_resolution(True) or 0.5:.1f} ms"))
+            if settings.get("timer_mode") == "on":
+                acts.append(Action("timer", "Jogos", "Resolução de timer de 0,5 ms (aprovada no teste A/B)",
+                                   ["O teste A/B mostrou ganho no seu PC. Desfeito ao fechar o TURBO BOOST PRO."],
+                                   lambda: f"✔ Timer: {winapi.set_timer_resolution(True) or 0.5:.1f} ms"))
             acts.append(Action("game_detect", "Jogos", "Ativar detecção automática de jogos",
                                ["Ao abrir um jogo com perfil (ou detectado automaticamente), aplica prioridade "
                                 "alta, para serviços temporários e libera RAM. Tudo volta ao fechar o jogo."],
@@ -309,10 +309,11 @@ class Engine:
             n, _f = processes.close_apps(apps, self.journal, GAME_GID, settings.get("relaunch_closed_apps"))
             if n:
                 done.append(f"{n} apps fechados")
-        if p.get("trim_ram"):
-            r = memory.optimize_ram(deep=True, exclude_pids={pid})
+        if p.get("trim_ram") and memory.ram_status()["percent"] > 85:  # só sob pressão real de memória
+            r = memory.optimize_ram(deep=False, exclude_pids={pid})
             done.append(f"{fmt_bytes(r['freed'])} de RAM liberados")
-        if p.get("timer") and not winapi.timer_resolution_active():
+        # timer só quando o teste A/B mostrou ganho neste PC (ou o usuário forçou)
+        if p.get("timer") and settings.get("timer_mode") == "on" and not winapi.timer_resolution_active():
             winapi.set_timer_resolution(True)
             self.journal.set_meta(GAME_GID, "timer", True)
         self.notify(f"🎮 {name} detectado: {', '.join(done) or 'boost aplicado'}.", "game")
@@ -362,6 +363,13 @@ class AutoPilot(threading.Thread):
 
     def _tick(self):
         eng = self.engine
+        try:
+            from . import stage2
+            stage2.tick()
+            if stage2.cs2_session_active():
+                return  # o Modo CS2 já cuida da sessão do jogo
+        except Exception:
+            log.exception("Modo CS2")
         # 1) jogo da sessão terminou?
         if self.game_pid and not psutil.pid_exists(self.game_pid):
             self.game_pid = None
@@ -405,7 +413,7 @@ class AutoPilot(threading.Thread):
         if settings.get("auto_mode") and snap.get("ram", 0) > settings.get("auto_ram_threshold", 85):
             if time.time() - self._last_trim > 120:
                 self._last_trim = time.time()
-                r = memory.optimize_ram(deep=True, exclude_pids={self.game_pid} if self.game_pid else None)
+                r = memory.optimize_ram(deep=False, exclude_pids={self.game_pid} if self.game_pid else None)
                 eng.notify(f"Modo automático: RAM em {snap['ram']:.0f}%, {fmt_bytes(r['freed'])} liberados.")
 
 

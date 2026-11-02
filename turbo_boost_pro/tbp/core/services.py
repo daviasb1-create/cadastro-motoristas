@@ -24,6 +24,9 @@ PROTECTED = {
     "winmgmt", "netprofm", "nlasvc", "wlansvc", "eaphost", "bthserv", "gpsvc", "coremessagingregistrar",
     "brokerinfrastructure", "systemeventsbroker", "userManager".lower(), "staterepository", "appxsvc",
     "clipsvc", "tokenbroker", "keyiso", "vaultsvc", "netlogon", "mpsdrv", "textinputmanagementservice",
+    "storsvc", "defragsvc", "vds", "smphost", "dosvc", "installservice", "wlidsvc", "licensemanager",
+    "xboxgipsvc", "xblauthmanager", "gamingservices", "gamingservicesnet", "bthavctpsvc", "btagservice",
+    "nvdisplay.containerlocalsystem", "amd external events utility", "fontcache", "sysmain_never",
 }
 
 # id: (nome amigável, descrição, recomendação) | recomendação: "temp" = parar só durante a sessão,
@@ -70,6 +73,19 @@ CATALOG = {
                                                  "de desenvolvedor.", "manual"),
     "WdiServiceHost": ("Host do Serviço de Diagnóstico", "Diagnósticos automáticos.", "manual"),
     "WdiSystemHost": ("Host do Sistema de Diagnóstico", "Diagnósticos automáticos.", "manual"),
+    "InventorySvc": ("Inventário e Avaliação de Compatibilidade", "Coleta inventário de apps para telemetria "
+                     "(Windows 11 23H2+); conhecido por picos de CPU.", "manual"),
+    "whesvc": ("Integridade e Experiências Otimizadas", "Coleta dados de 'saúde' do Windows.", "manual"),
+    "NcdAutoSetup": ("Configuração Automática de Dispositivos de Rede", "Instala sozinho impressoras/TVs da rede.",
+                     "manual"),
+    "AJRouter": ("Roteador AllJoyn", "Protocolo de IoT sem uso em PCs de jogos.", "manual"),
+    "SharedRealitySvc": ("Dados Espaciais", "Realidade mista.", "manual"),
+    "MixedRealityOpenXRSvc": ("Realidade Misturada OpenXR", "Óculos de realidade mista.", "manual"),
+    "NvContainerLocalSystem": ("Contêiner NVIDIA (overlay/telemetria)", "Necessário só para o overlay, gravação e "
+                               "atualizações automáticas do NVIDIA App. O driver e o painel continuam.", "manual"),
+    "ESRV_SVC_QUEENCREEK": ("Intel System Usage Report", "Telemetria da Intel.", "manual"),
+    "brave": ("Atualizador do Brave", "O Brave continua se atualizando ao ser aberto.", "manual"),
+    "OneDrive Updater Service": ("Atualizador do OneDrive", "O OneDrive se atualiza ao iniciar.", "manual"),
     "iphlpsvc": ("Auxiliar IP (IPv6 de transição)", "Túneis Teredo/6to4. Em raros casos o chat de grupo do "
                  "Xbox usa Teredo.", "manual"),
 }
@@ -107,6 +123,17 @@ PROFILES = {
     "WdiSystemHost": (None, None, "demand"),
     "iphlpsvc": (None, None, "demand"),
     "DPS": (None, None, "demand"),
+    # ---- etapa 2
+    "InventorySvc": ("demand", "demand", "demand"),
+    "whesvc": (None, "demand", "demand"),
+    "NcdAutoSetup": ("demand", "demand", "demand"),
+    "AJRouter": ("demand", "demand", "disabled"),
+    "SharedRealitySvc": ("demand", "demand", "demand"),
+    "MixedRealityOpenXRSvc": ("demand", "demand", "demand"),
+    "NvContainerLocalSystem": (None, "demand", "demand"),
+    "ESRV_SVC_QUEENCREEK": ("demand", "demand", "demand"),
+    "brave": ("demand", "demand", "demand"),
+    "OneDrive Updater Service": (None, "demand", "demand"),
 }
 PROFILE_INDEX = {"conservador": 0, "avancado": 1, "extremo": 2}
 PROFILE_NOTES = {

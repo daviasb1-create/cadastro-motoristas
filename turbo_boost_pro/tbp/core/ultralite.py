@@ -12,7 +12,9 @@ from .tweaks import TWEAKS, TWEAKS_BY_ID
 
 ULTRA_GID = "profile:ultra_lite"
 GAMING_GID = "profile:gaming_edition"
-PROFILE_TITLES = {ULTRA_GID: "WINDOWS ULTRA LITE", GAMING_GID: "WINDOWS GAMING EDITION"}
+STAGE2_GID = "profile:stage2"
+PROFILE_TITLES = {ULTRA_GID: "WINDOWS ULTRA LITE", GAMING_GID: "WINDOWS GAMING EDITION",
+                  STAGE2_GID: "OTIMIZAÇÃO ETAPA 2"}
 
 
 def is_active(gid: str) -> bool:
@@ -161,13 +163,14 @@ def plan_gaming_edition() -> list[Action]:
     acts += _service_actions("conservador", gid)
 
     def runtime():
-        winapi.set_timer_resolution(True)
         settings.set("auto_game_boost", True)
-        engine.journal.set_meta(gid, "timer", True)
-        return "✔ Timer 0,5 ms + detecção automática de jogos ativos"
-    acts.append(Action("ge:runtime", "Tempo de execução", "Timer de 0,5 ms e boost automático ao abrir jogos",
-                       ["Ao abrir um jogo com perfil: prioridade alta, serviços pausados e RAM liberada.",
-                        "Tudo volta ao normal ao fechar o jogo."], runtime))
+        if settings.get("timer_mode") == "on":  # só se o teste A/B aprovou
+            winapi.set_timer_resolution(True)
+            engine.journal.set_meta(gid, "timer", True)
+        return "✔ Boost automático de jogos ativo"
+    acts.append(Action("ge:runtime", "Tempo de execução", "Boost automático ao abrir jogos",
+                       ["Ao abrir um jogo com perfil: prioridade alta e serviços pausados; tudo volta ao fechar.",
+                        "Timer de 0,5 ms: somente se aprovado em Competitivo › Testes A/B."], runtime))
     cs = system_mods.find_cs2()
     if cs:
         def cs2_core():
@@ -189,9 +192,14 @@ def deactivate(gid: str) -> list[str]:
     g = engine.journal.data["groups"].get(gid)
     if not g:
         return []
-    other = GAMING_GID if gid == ULTRA_GID else ULTRA_GID
-    og = engine.journal.data["groups"].get(other, {"meta": {}})["meta"]
-    keep_tweaks, keep_gids = set(og.get("tweaks", [])), set(og.get("gids", []))
+    keep_tweaks, keep_gids, other_power = set(), set(), False
+    for other in PROFILE_TITLES:
+        if other == gid:
+            continue
+        og = engine.journal.data["groups"].get(other, {"meta": {}})["meta"]
+        keep_tweaks |= set(og.get("tweaks", []))
+        keep_gids |= set(og.get("gids", []))
+        other_power = other_power or bool(og.get("power"))
     errors = []
     for g2 in reversed(g["meta"].get("gids", [])):
         if g2 not in keep_gids:
@@ -199,7 +207,7 @@ def deactivate(gid: str) -> list[str]:
     for tid in g["meta"].get("tweaks", []):
         if tid not in keep_tweaks and tid in TWEAKS_BY_ID:
             errors += TWEAKS_BY_ID[tid].revert(engine.journal)
-    if g["meta"].get("power") and not og.get("power") and not engine.turbo_active:
+    if g["meta"].get("power") and not other_power and not engine.turbo_active:
         from . import power
         power.set_balanced(engine.journal)
     if g["meta"].get("timer") and engine.mode != "gamer":
@@ -213,7 +221,9 @@ def deactivate(gid: str) -> list[str]:
 def restore_windows_original() -> list[str]:
     """RESTAURAR WINDOWS ORIGINAL: desfaz absolutamente tudo (apps, recursos, serviços, tarefas, registro)."""
     errors = []
-    for gid in (GAMING_GID, ULTRA_GID):
+    from . import stage2
+    stage2.end_cs2_session()
+    for gid in (STAGE2_GID, GAMING_GID, ULTRA_GID):
         if is_active(gid):
             errors += deactivate(gid)
     errors += engine.restore_everything()

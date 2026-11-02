@@ -87,3 +87,25 @@ def test_cleaner_safety():
 def test_dns_packet_roundtrip_offline():
     from tbp.core.network import _dns_query
     assert _dns_query("127.0.0.1", "example.com", timeout=0.2) is None  # sem servidor: retorna None sem erro
+
+
+def test_bench_stats_from_presentmon_csv(tmp_path=None):
+    import csv
+    import tempfile
+    from tbp.core import bench
+    path = os.path.join(tempfile.mkdtemp(), "pm.csv")
+    fts = [5.0] * 990 + [20.0] * 10  # 1000 quadros: 1% em 20 ms
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["Application", "MsBetweenPresents", "MsCPUBusy", "MsGPUBusy", "PresentMode", "DisplayLatency"])
+        for v in fts:
+            w.writerow(["cs2.exe", v, 3.0, 4.6, "Hardware: Independent Flip", 9.5])
+    s = bench.parse_csv(path)
+    assert s["frames"] == 1000
+    assert abs(s["fps_avg"] - 1000 / (sum(fts) / 1000)) < 0.2
+    assert 50 <= s["fps_1low"] <= 200
+    assert s["present_mode"] == "Hardware: Independent Flip"
+    assert s["bound"] == "GPU" and s["latency_ms"] == 9.5
+    rows = bench.compare(s, dict(s, fps_1low=s["fps_1low"] * 1.10))
+    assert bench.verdict(rows).startswith("GANHO")
+    assert bench.verdict(bench.compare(s, dict(s))).startswith("Sem diferença")

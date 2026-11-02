@@ -1,7 +1,7 @@
 ; Instalador do TURBO BOOST PRO (Inno Setup 6) - gerado pelo build.bat
 #define AppName "TURBO BOOST PRO"
 #ifndef AppVersion
-  #define AppVersion "1.1.1"
+  #define AppVersion "1.2.0"
 #endif
 #define AppExe "TurboBoostPro.exe"
 

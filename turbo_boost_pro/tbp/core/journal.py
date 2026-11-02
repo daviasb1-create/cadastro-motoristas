@@ -198,7 +198,7 @@ class Journal:
                     flags = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
                     subprocess.Popen(a.get("cmdline") or [exe], close_fds=True, creationflags=flags,
                                      cwd=os.path.dirname(exe))
-        elif kind in ("appx", "feature", "capability", "task"):
+        elif kind in ("appx", "feature", "capability", "task", "pagefile", "nic"):
             from . import system_mods
             system_mods.revert_action(a)
         elif kind == "file":

@@ -16,7 +16,7 @@ _LAYERS = r"Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers"
 
 DEFAULT_PROFILE = {
     "name": "", "exe": "", "priority": "Alta", "gpu_high": True, "disable_fso": False,
-    "close_bg": True, "stop_services": True, "trim_ram": True, "timer": True, "enabled": True,
+    "close_bg": True, "stop_services": True, "trim_ram": True, "timer": False, "enabled": True,
 }
 
 

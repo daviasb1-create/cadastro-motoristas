@@ -309,6 +309,21 @@ TASKS = {
     r"\Microsoft\Windows\Flighting\FeatureConfig\UsageDataReporting": "Relatório de uso de recursos.",
     r"\Microsoft\Office\OfficeTelemetryAgentLogOn": "Telemetria do Office ao entrar.",
     r"\Microsoft\Office\OfficeTelemetryAgentFallBack": "Telemetria do Office.",
+    # ---- etapa 2
+    r"\Microsoft\Windows\Power Efficiency Diagnostics\AnalyzeSystem": "Análise periódica de energia (picos de CPU).",
+    r"\Microsoft\Windows\Application Experience\StartupAppTask": "Mede o impacto dos apps de inicialização.",
+    r"\Microsoft\Windows\Device Information\Device": "Coleta informações de dispositivos para telemetria.",
+    r"\Microsoft\Windows\Device Information\Device User": "Coleta informações de dispositivos (usuário).",
+    r"\Microsoft\Windows\NetTrace\GatherNetworkInfo": "Coleta informações de rede para diagnóstico.",
+    r"\Microsoft\Windows\Maintenance\WinSAT": "Avaliação de desempenho WinSAT (sem uso no Windows 11).",
+    r"\Microsoft\Windows\Speech\SpeechModelDownloadTask": "Baixa modelos de reconhecimento de voz.",
+    r"\Microsoft\Windows\Shell\FamilySafetyMonitor": "Monitor do Microsoft Family.",
+    r"\Microsoft\Windows\Shell\FamilySafetyRefreshTask": "Sincronização do Microsoft Family.",
+    r"\Microsoft\Windows\PI\Sqm-Tasks": "Telemetria de integridade (SQM).",
+}
+# Tarefas de telemetria de fabricantes com nomes variáveis (correspondência por padrão)
+TASK_PATTERNS = {
+    r"^\\NvTmRep_CrashReport\d_\{[0-9A-F-]+\}$": "Relatório de falhas da NVIDIA (telemetria).",
 }
 
 
@@ -327,14 +342,23 @@ def list_tasks() -> list[dict]:
     for r in rows:
         full = f"{r.get('TaskPath', '')}{r.get('TaskName', '')}"
         key = wanted.get(full.lower())
+        if not key:
+            for pat, desc in TASK_PATTERNS.items():
+                if re.match(pat, full, re.I):
+                    TASKS[full] = desc  # registra para permitir desativar/reverter com validação
+                    key = full
         if key:
             out.append({"full": key, "name": key.rsplit("\\", 1)[1], "desc": TASKS[key],
                         "enabled": r.get("State") != "Disabled"})
     return out
 
 
+def _known_task(full: str) -> bool:
+    return full in TASKS or any(re.match(p, full, re.I) for p in TASK_PATTERNS)
+
+
 def disable_task(full: str, journal: Journal) -> str:
-    if full not in TASKS:
+    if not _known_task(full):
         raise ValueError("tarefa fora do catálogo")
     path, name = _split_task(_check(_SAFE_TASK, full, "tarefa"))
     r = powershell(f"Disable-ScheduledTask -TaskPath '{path}' -TaskName '{name}' -ErrorAction Stop | Out-Null")
@@ -368,11 +392,84 @@ def revert_action(a: dict):
             raise RuntimeError("Reinstalação requer internet/Windows Update: " + (r.stderr or "").strip()[:150])
     elif kind == "task":
         full = a["name"]
-        if full not in TASKS:
+        if not _known_task(full):
             raise ValueError("tarefa fora do catálogo")
         path, name = _split_task(_check(_SAFE_TASK, full, "tarefa"))
         powershell(f"Enable-ScheduledTask -TaskPath '{path}' -TaskName '{name}' -ErrorAction SilentlyContinue | "
                    "Out-Null")
+
+
+    elif kind == "pagefile":
+        if a.get("auto"):
+            return
+        sizes = a.get("files") or []
+        script = "$c = Get-CimInstance Win32_ComputerSystem; Set-CimInstance -InputObject $c -Property " \
+                 "@{AutomaticManagedPagefile=$false}; "
+        for f in sizes:
+            name = _check(_SAFE_PATH, f["name"], "arquivo de paginação")
+            ini, mx = int(f["initial"]), int(f["max"])
+            script += (f"$s = Get-CimInstance Win32_PageFileSetting | Where-Object Name -eq '{name}'; "
+                       f"if (-not $s) {{ $s = New-CimInstance -ClassName Win32_PageFileSetting -Property "
+                       f"@{{Name='{name}'}} }}; Set-CimInstance -InputObject $s -Property "
+                       f"@{{InitialSize={ini}; MaximumSize={mx}}}; ")
+        r = powershell(script)
+        if r.returncode != 0:
+            raise RuntimeError((r.stderr or "falha").strip()[:200])
+    elif kind == "nic":
+        adapter = _check(_SAFE_NIC, a["adapter"], "adaptador")
+        keyword = _check(_SAFE_KEY, a["keyword"], "propriedade")
+        value = _check(_SAFE_KEY, str(a["value"]), "valor")
+        powershell(f"Set-NetAdapterAdvancedProperty -Name '{adapter}' -RegistryKeyword '{keyword}' "
+                   f"-RegistryValue '{value}' -NoRestart:$false -ErrorAction Stop")
+
+
+_SAFE_PATH = re.compile(r"^[A-Za-z]:\\[A-Za-z0-9 _.\\-]+$")
+_SAFE_NIC = re.compile(r"^[A-Za-z0-9 _.()#\-]+$")
+_SAFE_KEY = re.compile(r"^[*A-Za-z0-9_]+$")
+
+
+# ============================================================================ PAGINAÇÃO
+def set_pagefile_auto(journal: Journal) -> str:
+    rows = powershell_json("$c = Get-CimInstance Win32_ComputerSystem; [pscustomobject]@{Auto=$c."
+                           "AutomaticManagedPagefile; Files=@(Get-CimInstance Win32_PageFileSetting | ForEach-Object "
+                           "{ [pscustomobject]@{name=$_.Name; initial=$_.InitialSize; max=$_.MaximumSize} })}")
+    if rows and rows[0].get("Auto"):
+        return "Paginação já é gerenciada pelo Windows."
+    prev = rows[0] if rows else {}
+    r = powershell("$c = Get-CimInstance Win32_ComputerSystem; Set-CimInstance -InputObject $c -Property "
+                   "@{AutomaticManagedPagefile=$true}")
+    if r.returncode != 0:
+        raise RuntimeError((r.stderr or "falha").strip()[:200])
+    gid = "memory:pagefile"
+    journal.group(gid, "Paginação gerenciada pelo Windows", "memoria")
+    journal.add_action(gid, {"kind": "pagefile", "auto": bool(prev.get("Auto")), "files": prev.get("Files") or [],
+                             "desc": "Restaurar configuração anterior de paginação"})
+    return "✔ Arquivo de paginação gerenciado pelo Windows (efeito após reiniciar)"
+
+
+# ============================================================================ PLACA DE REDE
+EEE_KEYWORDS = ("*EEE", "EEELinkAdvertisement", "AdvancedEEE", "GreenEthernet", "EnableGreenEthernet")
+
+
+def disable_nic_power_saving(journal: Journal) -> list[str]:
+    from .analysis2 import nic_properties
+    msgs = []
+    for n in nic_properties():
+        if n["keyword"] not in EEE_KEYWORDS or n["value"] in ("0", "", None):
+            continue
+        adapter = _check(_SAFE_NIC, n["adapter"], "adaptador")
+        keyword = _check(_SAFE_KEY, n["keyword"], "propriedade")
+        r = powershell(f"Set-NetAdapterAdvancedProperty -Name '{adapter}' -RegistryKeyword '{keyword}' "
+                       "-RegistryValue '0' -ErrorAction Stop", timeout=60)
+        if r.returncode != 0:
+            msgs.append(f"⚠ {adapter} {n['name']}: {(r.stderr or '').strip()[:100]}")
+            continue
+        gid = f"nic:{adapter}:{keyword}"
+        journal.group(gid, f"Rede {adapter}: {n['name']} desativado", "rede")
+        journal.add_action(gid, {"kind": "nic", "adapter": adapter, "keyword": keyword, "value": n["value"],
+                                 "desc": f"Restaurar {n['name']} em {adapter}"})
+        msgs.append(f"✔ {adapter}: {n['name']} desativado")
+    return msgs or ["Nenhuma economia de energia de rede ativa."]
 
 
 # ============================================================================ HIBERNAÇÃO
@@ -448,6 +545,26 @@ def find_cs2() -> dict | None:
     return None
 
 
+_LAYERS = r"Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers"
+
+
+def cs2_fso(disable: bool, journal: Journal) -> str:
+    """Desativa as otimizações de tela cheia só para o cs2.exe (tela cheia exclusiva). Testar com benchmark."""
+    cs = find_cs2()
+    if not cs:
+        raise RuntimeError("CS2 não encontrado.")
+    gid = "game:cs2_fso"
+    if not disable:
+        journal.revert_group(gid)
+        return "Otimizações de tela cheia do CS2 restauradas (padrão)."
+    _e, _t, cur = reg.read_value("HKCU", _LAYERS, cs["exe"])
+    flags = set(str(cur or "").replace("~", "").split())
+    flags.add("DISABLEDXMAXIMIZEDWINDOWEDMODE")
+    journal.group(gid, "CS2: tela cheia exclusiva (FSO desativado)", "jogos")
+    journal.reg_set(gid, "HKCU", _LAYERS, cs["exe"], reg.REG_SZ, "~ " + " ".join(sorted(flags)))
+    return "✔ CS2: otimizações de tela cheia desativadas (tela cheia exclusiva)"
+
+
 def cs2_status() -> dict:
     cs = find_cs2()
     st = {"found": bool(cs), "priority": False, "gpu": False, "autoexec": False}
@@ -458,6 +575,8 @@ def cs2_status() -> dict:
     ok, _t, v = reg.read_value("HKCU", r"Software\Microsoft\DirectX\UserGpuPreferences", cs["exe"])
     st["gpu"] = ok and "GpuPreference=2" in str(v)
     path = os.path.join(cs["cfg_dir"], "autoexec.cfg")
+    ok, _t, v = reg.read_value("HKCU", _LAYERS, cs["exe"])
+    st["fso_off"] = ok and "DISABLEDXMAXIMIZEDWINDOWEDMODE" in str(v)
     st["autoexec"] = os.path.exists(path) and "TURBO BOOST PRO" in open(path, encoding="utf-8", errors="ignore").read()
     st.update(cs)
     return st

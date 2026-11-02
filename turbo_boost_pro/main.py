@@ -17,9 +17,11 @@ def _selftest() -> int:
     import importlib
     import traceback
     mods = ["tbp.core." + m for m in ("engine", "ultralite", "system_mods", "services", "snapshot", "diagnostics",
-                                      "cleaner", "network", "storage", "gaming", "winver", "monitor")]
+                                      "cleaner", "network", "storage", "gaming", "winver", "monitor", "bench", "analysis2",
+                                      "stage2")]
     mods += ["tbp.ui.app"] + ["tbp.ui.pages." + p for p in ("dashboard", "gaming", "cleaner", "performance",
-                                                             "advanced", "ultralite", "diagnostics", "security")]
+                                                             "advanced", "ultralite", "competitive", "diagnostics",
+                                                             "security")]
     out = []
     code = 0
     for m in mods:
@@ -29,6 +31,8 @@ def _selftest() -> int:
         except Exception:
             code = 1
             out.append(f"FALHA {m}\n{traceback.format_exc()}")
+    from tbp.core import bench
+    out.append(f"PresentMon: {bench.presentmon_path() or 'NAO ENCONTRADO'}")
     from tbp.config import DATA_DIR
     (DATA_DIR / "selftest.txt").write_text("\n".join(out), encoding="utf-8")
     return code

@@ -2,9 +2,15 @@
 # Gera dist\TurboBoostPro\TurboBoostPro.exe (modo pasta: inicia mais rápido que arquivo único).
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
+import os
 datas = collect_data_files("customtkinter") + [("assets/icon.ico", "assets"), ("assets/icon.png", "assets")]
+# PresentMon (Intel, licença MIT) para o benchmark de FPS: baixado pelo build em tools/
+for f in ("PresentMon.exe", "PresentMon-LICENSE.txt"):
+    if os.path.exists(os.path.join("tools", f)):
+        datas.append((os.path.join("tools", f), "tools"))
 # As páginas são carregadas sob demanda (importlib): listadas explicitamente para entrarem no .exe
-PAGES = ["dashboard", "gaming", "cleaner", "performance", "advanced", "ultralite", "diagnostics", "security"]
+PAGES = ["dashboard", "gaming", "cleaner", "performance", "advanced", "ultralite", "competitive", "diagnostics",
+         "security"]
 hidden = (collect_submodules("tbp") + ["tbp.ui", "tbp.ui.pages"] + [f"tbp.ui.pages.{p}" for p in PAGES]
           + ["win32pdh", "win32com.client", "pythoncom", "win32timezone"])
 

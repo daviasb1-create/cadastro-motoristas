@@ -168,6 +168,16 @@ def set_timer_resolution(enable: bool, hundred_ns: int = 5000) -> float | None:
     return current.value / 10000.0
 
 
+def query_timer_resolution() -> dict | None:
+    """Resolução do timer do sistema em ms: mais grossa possível, mais fina possível e atual."""
+    if not IS_WINDOWS:
+        return None
+    mn, mx, cur = ctypes.c_ulong(), ctypes.c_ulong(), ctypes.c_ulong()
+    if ntdll.NtQueryTimerResolution(ctypes.byref(mn), ctypes.byref(mx), ctypes.byref(cur)) != 0:
+        return None
+    return {"coarsest": mn.value / 10000, "finest": mx.value / 10000, "current": cur.value / 10000}
+
+
 def timer_resolution_active() -> bool:
     return _timer_active
 

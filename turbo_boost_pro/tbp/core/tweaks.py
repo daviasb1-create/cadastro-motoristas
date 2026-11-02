@@ -384,6 +384,14 @@ TWEAKS += [
           risk="Médio", reboot=True, lite=True),
 ]
 
+TWEAKS.append(Tweak(
+    "global_timer", "latencia", "Pedidos de timer globais (necessário para o teste do timer)",
+    "No Windows 11, a resolução de timer pedida por um programa vale só para ele. Este ajuste restaura o "
+    "comportamento antigo: o timer pedido pelo TURBO BOOST PRO passa a valer para o jogo.",
+    [D("HKLM", r"SYSTEM\CurrentControlSet\Control\Session Manager\kernel", "GlobalTimerResolutionRequests", 1)],
+    benefit="Permite medir se 0,5 ms ajuda no seu PC.",
+    note="Só faz sentido junto com o teste A/B. Pode aumentar o consumo em repouso enquanto o timer estiver ativo.",
+    risk="Médio", reboot=True, min_build=22000))
 TWEAKS_BY_ID = {t.id: t for t in TWEAKS}
 
 # Otimizações já existentes que também fazem parte do WINDOWS ULTRA LITE
@@ -402,6 +410,7 @@ CATEGORIES = {
     "visual": "Efeitos visuais",
     "segundo_plano": "Segundo plano",
     "privacidade": "Privacidade, telemetria e IA",
+    "latencia": "Latência",
 }
 
 

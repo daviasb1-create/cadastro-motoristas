@@ -76,6 +76,48 @@ if apps:
     except Exception as e:
         notes.append(f"AVISO remoção de app não testável neste Windows: {e}")
 
+# ---------------------------------------------------------------- ETAPA 2
+from tbp.core import analysis2, bench, stage2, power  # noqa: E402
+from tbp.utils import powershell_json as pj  # noqa: E402
+
+pf_before = pj("$c=Get-CimInstance Win32_ComputerSystem; [pscustomobject]@{Auto=$c.AutomaticManagedPagefile; "
+               "Files=@(Get-CimInstance Win32_PageFileSetting | ForEach-Object { \"$($_.Name)|$($_.InitialSize)|"
+               "$($_.MaximumSize)\" })}")
+for fn in (analysis2.cpu_report, analysis2.ram_report, analysis2.gpu_report, analysis2.latency_report,
+           analysis2.disk_report):
+    try:
+        rep = fn()
+        check(bool(rep["facts"]), f"{fn.__name__}: {len(rep['facts'])} dados, {len(rep['findings'])} achados")
+    except Exception as e:  # noqa: BLE001
+        check(False, f"{fn.__name__} falhou: {e!r}")
+audit = analysis2.process_audit(3)
+check(isinstance(audit["rows"], list), f"Auditoria de processos: {len(audit['rows'])} processos ativos em repouso")
+s2 = stage2.plan_stage2()
+for a in s2:
+    a.selected = a.id not in ("nic_eee",)
+res2 = engine.execute(s2)
+for e in res2.errors:
+    print("   erro etapa 2:", e)
+check(not [e for e in res2.errors if "restauração" not in e.lower()], f"Etapa 2 aplicada ({len(s2)} ações)")
+check(power.read_setting("PERFBOOSTMODE") is not None, f"Leitura do plano de energia: {power.cpu_settings()}")
+msgs = system_mods.set_pagefile_auto(engine.journal)
+print("  ", msgs)
+svc_run_before = {n: (services.get_service(n) or {}).get("status") for n in stage2.CS2_SESSION_SERVICES}
+print("   Modo CS2:", stage2.start_cs2_session(launch=False, close_apps=False))
+check(stage2.cs2_session_active(), "Modo CS2 iniciado")
+stage2.end_cs2_session()
+time.sleep(5)
+svc_run_after = {n: (services.get_service(n) or {}).get("status") for n in stage2.CS2_SESSION_SERVICES}
+diff_run = {n: (svc_run_before[n], svc_run_after[n]) for n in svc_run_before
+            if svc_run_before[n] == "running" and svc_run_after[n] != "running"}
+check(not diff_run, "Serviços pausados pelo Modo CS2 voltaram a rodar" + (f": {diff_run}" if diff_run else ""))
+try:
+    r = bench.capture("dwm.exe", 5, "CI")
+    check(r["frames"] > 0, f"Benchmark PresentMon: {r['frames']} quadros, {r['fps_avg']} FPS")
+except bench.BenchError as e:
+    check("quadro" in str(e).lower(), f"Benchmark PresentMon executou (sem GPU no CI): {e}")
+print("   PresentMon:", bench.presentmon_path())
+
 # ---------------------------------------------------------------- medição
 snap = snapshot.capture("CI", cpu_seconds=2, journal=engine.journal)
 check(snap["processes"] > 0 and snap["ram_used"] > 0, f"Medição: {snap['processes']} processos, "
@@ -92,6 +134,10 @@ check(not diff, f"Registro idêntico ao original ({len(reg_before)} valores)" + 
 svc_after = {n: (services.get_service(n) or {}).get("start") for n in services.PROFILES}
 sdiff = {n: (svc_before[n], svc_after[n]) for n in svc_before if svc_before[n] != svc_after[n]}
 check(not sdiff, "Serviços com inicialização original" + (f" - diferentes: {sdiff}" if sdiff else ""))
+pf_after = pj("$c=Get-CimInstance Win32_ComputerSystem; [pscustomobject]@{Auto=$c.AutomaticManagedPagefile; "
+              "Files=@(Get-CimInstance Win32_PageFileSetting | ForEach-Object { \"$($_.Name)|$($_.InitialSize)|"
+              "$($_.MaximumSize)\" })}")
+check(pf_before == pf_after, f"Paginação restaurada ({pf_before} = {pf_after})")
 tasks_after = {t["full"]: t["enabled"] for t in system_mods.list_tasks()}
 tdiff = [k for k in tasks_before if tasks_before[k] != tasks_after.get(k)]
 check(not tdiff, "Tarefas agendadas no estado original" + (f" - diferentes: {tdiff}" if tdiff else ""))
