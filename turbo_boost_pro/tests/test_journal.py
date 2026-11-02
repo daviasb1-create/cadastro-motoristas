@@ -29,32 +29,32 @@ def test_apply_and_revert_restores_original():
 
 def test_value_that_did_not_exist_is_deleted_on_revert():
     j = new_journal()
-    t = TWEAKS_BY_ID["game_dvr_off"]
-    t.apply(j)
-    t.revert(j)
-    for c in t.get_changes():
-        assert reg.read_value(c.hive, c.path, c.name)[0] is False
+    reg.delete_value("HKCU", "TBPTest", "Novo")
+    j.reg_set("tweak:t", "HKCU", "TBPTest", "Novo", reg.REG_DWORD, 1)
+    assert reg.read_value("HKCU", "TBPTest", "Novo")[2] == 1
+    j.revert_group("tweak:t")
+    assert reg.read_value("HKCU", "TBPTest", "Novo")[0] is False
 
 
 def test_shared_value_kept_until_last_owner_reverts():
     j = new_journal()
-    reg.write_value("HKLM", "X", "V", reg.REG_DWORD, 1)
-    j.reg_set("tweak:a", "HKLM", "X", "V", reg.REG_DWORD, 5)
-    j.reg_set("tweak:b", "HKLM", "X", "V", reg.REG_DWORD, 5)
+    reg.write_value("HKCU", "TBPTest", "V", reg.REG_DWORD, 1)
+    j.reg_set("tweak:a", "HKCU", "TBPTest", "V", reg.REG_DWORD, 5)
+    j.reg_set("tweak:b", "HKCU", "TBPTest", "V", reg.REG_DWORD, 5)
     j.revert_group("tweak:a")
-    assert reg.read_value("HKLM", "X", "V")[2] == 5  # b ainda depende
+    assert reg.read_value("HKCU", "TBPTest", "V")[2] == 5  # b ainda depende
     j.revert_group("tweak:b")
-    assert reg.read_value("HKLM", "X", "V")[2] == 1
+    assert reg.read_value("HKCU", "TBPTest", "V")[2] == 1
 
 
 def test_journal_persists_and_revert_all():
     j = new_journal()
-    reg.write_value("HKCU", "K", "N", reg.REG_BINARY, b"\x02\x00")
-    j.reg_set("startup:x", "HKCU", "K", "N", reg.REG_BINARY, b"\x03\x00")
+    reg.write_value("HKCU", "TBPTest", "N", reg.REG_BINARY, b"\x02\x00")
+    j.reg_set("startup:x", "HKCU", "TBPTest", "N", reg.REG_BINARY, b"\x03\x00")
     j2 = Journal(j.path)  # recarrega do disco
     assert j2.has_group("startup:x")
     assert j2.revert_all() == []
-    assert reg.read_value("HKCU", "K", "N")[2] == b"\x02\x00"
+    assert reg.read_value("HKCU", "TBPTest", "N")[2] == b"\x02\x00"
     assert j2.describe() == []
 
 

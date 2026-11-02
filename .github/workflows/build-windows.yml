@@ -1,0 +1,77 @@
+name: Build TURBO BOOST PRO (Windows)
+
+on:
+  push:
+    branches: [claude/turbo-boost-pro-optimizer-p7ejzb]
+    paths: ["turbo_boost_pro/**", ".github/workflows/build-windows.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: turbo_boost_pro
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-build.txt pytest
+
+      - name: Testes (registro real do Windows)
+        run: python -m pytest -q tests
+
+      - name: Teste de fumaca dos modulos do Windows
+        run: |
+          python -c "import sys; sys.path.insert(0,'.'); from tbp.core.engine import engine; from tbp.core import power, services, startup, storage; acts = engine.plan_turbo(); print('TURBO:', len(acts), 'acoes'); print('Plano:', power.active_plan()); print('Servicos:', len(services.catalog_status())); print('Inicializacao:', len(startup.list_entries())); print('Volumes:', storage.list_volumes())"
+
+      - name: Gerar executavel
+        run: |
+          python assets/make_icon.py
+          pyinstaller --noconfirm --clean turbo_boost_pro.spec
+
+      - name: Verificar se o .exe abre
+        run: |
+          $p = Start-Process -FilePath "dist\TurboBoostPro\TurboBoostPro.exe" -PassThru
+          Start-Sleep -Seconds 15
+          if ($p.HasExited) { Write-Error "O executavel fechou sozinho (codigo $($p.ExitCode))"; exit 1 }
+          Stop-Process -Id $p.Id -Force
+          Write-Host "Executavel abriu e ficou estavel por 15 s."
+
+      - name: Gerar instalador
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          & $iscc installer\turbo_boost_pro.iss
+          Compress-Archive -Path dist\TurboBoostPro\* -DestinationPath TurboBoostPro_Portatil.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TurboBoostPro-Windows
+          path: |
+            turbo_boost_pro/installer/Output/*.exe
+            turbo_boost_pro/TurboBoostPro_Portatil.zip
+
+      - name: Publicar para download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: turbo-boost-pro-v1.0.0
+          name: TURBO BOOST PRO 1.0.0
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          body: |
+            **TurboBoostPro_Setup_1.0.0.exe**: instalador (cria atalho na Area de Trabalho).
+            **TurboBoostPro_Portatil.zip**: versao sem instalacao.
+          files: |
+            turbo_boost_pro/installer/Output/TurboBoostPro_Setup_1.0.0.exe
+            turbo_boost_pro/TurboBoostPro_Portatil.zip
