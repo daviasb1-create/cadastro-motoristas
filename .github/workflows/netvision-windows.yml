@@ -1,0 +1,50 @@
+name: NetVision - build Windows (.exe)
+
+on:
+  push:
+    paths: ["starlink-netvision-pro/**", ".github/workflows/netvision-windows.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: starlink-netvision-pro
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Testes (inclui ping nativo IcmpSendEcho e gRPC com reflection)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m pytest tests -q
+      - name: Gerar executavel
+        run: pyinstaller build\netvision.spec --noconfirm --distpath dist --workpath build\work
+      - name: Teste do executavel gerado
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $data = Join-Path $env:RUNNER_TEMP "nvdata"
+          New-Item -ItemType Directory -Force $data | Out-Null
+          $env:NETVISION_DATA_DIR = $data
+          $srv = Start-Process python -ArgumentList "tests\fake_starlink_server.py","19333" -PassThru -WindowStyle Hidden
+          Start-Sleep 3
+          '{"dish_target":"127.0.0.1:19333","router_targets":["127.0.0.1:19333"],"ping_targets":["127.0.0.1"],"speedtest_auto":false}' | Set-Content (Join-Path $data "config.json")
+          $app = Start-Process dist\StarlinkNetVisionPro.exe -PassThru
+          Start-Sleep 25
+          Stop-Process $app -Force; Stop-Process $srv -Force
+          $log = Get-Content (Join-Path $data "netvision.log") -Raw
+          Write-Output $log
+          if ($log -match "Traceback|ModuleNotFoundError|ImportError") { throw "erro no executavel" }
+          python -c "import sqlite3,sys; c=sqlite3.connect(sys.argv[1]); ev=[r[0] for r in c.execute('select message from events')]; print(ev); sys.exit(0 if any('Aquecimento' in m for m in ev) else 1)" (Join-Path $data "netvision.sqlite3")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StarlinkNetVisionPro-windows
+          path: starlink-netvision-pro/dist/StarlinkNetVisionPro.exe

@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest==9.2.0
+pyinstaller==6.22.3
+pillow==13.0.0
+# Somente testes: descritores reais da API Starlink (MIT) usados pelo servidor gRPC de teste
+starlink-client==0.1.13
