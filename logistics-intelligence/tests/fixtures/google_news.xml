@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>Google News</title>
+<item><title>Móveis Aurora inaugura novo centro de distribuição em Joinville - Jornal Exemplo</title>
+<link>https://news.google.com/rss/articles/abc123</link>
+<pubDate>Wed, 04 Nov 2026 12:00:00 GMT</pubDate>
+<description>&lt;a href="x"&gt;Móveis Aurora inaugura novo centro de distribuição em Joinville&lt;/a&gt; com operação para atender Rio de Janeiro e São Paulo</description>
+<source url="https://jornalexemplo.com.br">Jornal Exemplo</source></item>
+<item><title>Mercado de ações fecha em alta - Jornal Exemplo</title>
+<link>https://news.google.com/rss/articles/def456</link>
+<pubDate>Wed, 04 Nov 2026 13:00:00 GMT</pubDate>
+<description>Bolsa sobe</description><source url="https://jornalexemplo.com.br">Jornal Exemplo</source></item>
+</channel></rss>

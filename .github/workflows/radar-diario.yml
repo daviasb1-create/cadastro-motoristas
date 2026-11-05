@@ -1,0 +1,135 @@
+# LOGISTICS INTELLIGENCE · execução automática na nuvem (GitHub Actions)
+# Roda mesmo com o computador desligado. Horários em UTC (Brasília = UTC-3):
+#   10:00 UTC = 07:00 · 15:00 UTC = 12:00 · 20:00 UTC = 17:00 (pesquisa completa)
+#   12:30 UTC = 09:30 · 17:30 UTC = 14:30 (monitor de urgentes)
+# IMPORTANTE: agendamentos do GitHub só rodam a partir do branch padrão (main).
+name: Radar comercial diário
+
+on:
+  schedule:
+    - cron: "0 10 * * *"
+    - cron: "0 15 * * *"
+    - cron: "0 20 * * *"
+    - cron: "30 12 * * 1-5"
+    - cron: "30 17 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "Tipo de pesquisa"
+        type: choice
+        options: [completa, urgente]
+        default: completa
+
+concurrency:
+  group: radar-comercial
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: logistics-intelligence
+    env:
+      TZ: America/Sao_Paulo
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
+      BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}
+      SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DB_ENCRYPTION_KEY: ${{ secrets.DB_ENCRYPTION_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: logistics-intelligence/requirements.txt
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Definir modo
+        id: modo
+        run: |
+          MODE="${{ github.event.inputs.modo }}"
+          if [ -z "$MODE" ]; then
+            case "${{ github.event.schedule }}" in
+              "30 12 * * 1-5"|"30 17 * * 1-5") MODE=urgente ;;
+              *) MODE=completa ;;
+            esac
+          fi
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+
+      # Sem DATABASE_URL (PostgreSQL), o SQLite é mantido entre execuções pelo cache do GitHub,
+      # SEMPRE criptografado (AES-256) com o secret DB_ENCRYPTION_KEY. Repositório público
+      # não deve guardar dados de leads sem criptografia.
+      - name: Verificar armazenamento seguro
+        if: env.DATABASE_URL == '' && env.DB_ENCRYPTION_KEY == ''
+        run: |
+          echo "::error::Configure o secret DATABASE_URL (PostgreSQL) ou DB_ENCRYPTION_KEY (senha longa para criptografar o banco). Veja docs/IMPLANTACAO_NUVEM.md"
+          exit 1
+
+      - name: Restaurar banco SQLite criptografado
+        if: env.DATABASE_URL == ''
+        uses: actions/cache/restore@v4
+        with:
+          path: logistics-intelligence/data/logistics.db.enc
+          key: li-db-enc-${{ github.run_id }}
+          restore-keys: li-db-enc-
+
+      - name: Descriptografar banco
+        if: env.DATABASE_URL == ''
+        run: |
+          if [ -f data/logistics.db.enc ]; then
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in data/logistics.db.enc -out data/logistics.db -pass env:DB_ENCRYPTION_KEY
+            rm -f data/logistics.db.enc
+          else
+            echo "Primeira execução: banco novo."
+          fi
+
+      - name: Testes rápidos
+        run: python -m pytest -q tests
+
+      - name: Executar radar
+        run: python run_pipeline.py --mode ${{ steps.modo.outputs.mode }} --trigger github --excel data/relatorios/leads.xlsx
+
+      - name: Criptografar banco
+        if: always() && env.DATABASE_URL == ''
+        run: |
+          if [ -f data/logistics.db ]; then
+            python -c "import sqlite3; c=sqlite3.connect('data/logistics.db'); c.execute('PRAGMA wal_checkpoint(TRUNCATE)'); c.close()"
+            openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in data/logistics.db -out data/logistics.db.enc -pass env:DB_ENCRYPTION_KEY
+          fi
+
+      - name: Salvar banco criptografado
+        if: always() && env.DATABASE_URL == ''
+        uses: actions/cache/save@v4
+        with:
+          path: logistics-intelligence/data/logistics.db.enc
+          key: li-db-enc-${{ github.run_id }}
+
+      # Planilha e relatório contêm dados de contato. Em repositório PÚBLICO, artefatos ficam
+      # visíveis para qualquer pessoa logada no GitHub. Só publique com o repositório privado:
+      # crie a variável PUBLICAR_ARTEFATOS = sim em Settings > Secrets and variables > Actions > Variables.
+      - name: Publicar relatório e planilha (somente se autorizado)
+        if: always() && vars.PUBLICAR_ARTEFATOS == 'sim'
+        uses: actions/upload-artifact@v4
+        with:
+          name: radar-${{ github.run_id }}
+          path: |
+            logistics-intelligence/data/relatorios/
+          retention-days: 14
+          if-no-files-found: ignore
