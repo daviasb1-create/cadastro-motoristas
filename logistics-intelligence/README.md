@@ -12,7 +12,7 @@ e deixa **e-mail e WhatsApp prontos para revisar, copiar e enviar**.
 ## Início rápido (Windows 11)
 
 1. Instale o **Python 3.12** em <https://www.python.org/downloads/> e marque **"Add python.exe to PATH"**.
-2. Baixe esta pasta (`logistics-intelligence`).
+2. Baixe esta pasta (`logistics-intelligence`) e coloque em um caminho curto, como `C:\LI\logistics-intelligence`.
 3. Dê dois cliques em **`iniciar_windows.bat`**. Na primeira vez, ele instala tudo (3 a 5 minutos).
 4. O painel abre no navegador em `http://localhost:8501`.
 5. Em **10. Configurações**, preencha os dados da Ícaro Express, sua assinatura e as credenciais.

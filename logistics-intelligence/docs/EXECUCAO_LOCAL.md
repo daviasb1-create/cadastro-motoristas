@@ -1,7 +1,7 @@
 # Execução local e rotina diária
 
 ## Comandos
-| Ação | Comando (dentro da pasta, com o `.venv` ativo) |
+| Ação | Comando (dentro da pasta, com o ambiente ativo) |
 |---|---|
 | Abrir o painel | `streamlit run app.py` ou `iniciar_windows.bat` |
 | Pesquisa completa agora | `python run_pipeline.py` |
@@ -11,7 +11,7 @@
 | Agendador local | `python scheduler_service.py` ou `agendador_windows.bat` |
 | Testes | `python -m pytest -q tests` |
 
-Para ativar o `.venv` manualmente no Windows: `.venv\Scripts\activate`.
+Para ativar o ambiente manualmente no Windows: `%LOCALAPPDATA%\LogisticsIntelligence\venv\Scripts\activate`.
 
 ## Rotina sugerida (20 a 40 minutos por dia)
 1. **08:00 · Oportunidades urgentes:** responda primeiro às demandas explícitas e licitações com prazo curto.

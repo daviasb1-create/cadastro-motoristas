@@ -7,13 +7,16 @@
 
 ## 2. Baixar o sistema
 - **Opção simples:** no GitHub, clique em **Code > Download ZIP**, extraia e copie a pasta
-  `logistics-intelligence` para `C:\LogisticsIntelligence`.
+  `logistics-intelligence` para **`C:\LI\logistics-intelligence`** (caminho curto; evite deixar dentro de Downloads,
+  porque o ZIP cria pastas com nomes muito longos).
 - **Opção Git:** `git clone https://github.com/daviasb1-create/cadastro-motoristas.git`
 
 ## 3. Primeira execução
 1. Abra a pasta `logistics-intelligence`.
 2. Dê dois cliques em **`iniciar_windows.bat`**.
-   - Na primeira vez, ele cria o ambiente `.venv`, instala as dependências e copia `.env.example` para `.env`.
+   - Na primeira vez, ele cria o ambiente Python em `%LOCALAPPDATA%\LogisticsIntelligence\venv` (caminho curto,
+     evita o limite de 260 caracteres do Windows), instala as dependências e copia `.env.example` para `.env`.
+   - O painel abre só no seu computador (`localhost`); outras pessoas da rede não acessam.
    - O navegador abre em `http://localhost:8501`.
 3. Para fechar, feche a janela preta do Prompt.
 
@@ -33,8 +36,8 @@ No painel, abra **10. Configurações**:
 **Jeito 2 (Agendador de Tarefas, roda sem janela aberta):**
 1. Tecla Windows > digite **Agendador de Tarefas** > **Criar Tarefa Básica**.
 2. Nome: `Radar 07h`. Disparador: **Diariamente**, 07:00.
-3. Ação: **Iniciar um programa** > Programa: `C:\LogisticsIntelligence\logistics-intelligence\pesquisar_agora_windows.bat`
-   e em **Iniciar em**: `C:\LogisticsIntelligence\logistics-intelligence`.
+3. Ação: **Iniciar um programa** > Programa: `C:\LI\logistics-intelligence\pesquisar_agora_windows.bat`
+   e em **Iniciar em**: `C:\LI\logistics-intelligence`.
 4. Repita para 12:00 e 17:00. Para o monitor de urgentes, crie tarefas 09:30 e 14:30 com o argumento `urgente`.
 5. Nas propriedades da tarefa, marque **"Executar a tarefa assim que possível após uma inicialização agendada ter sido perdida"**.
 
@@ -47,4 +50,6 @@ Com o computador desligado nada roda. Para isso, use a nuvem: [IMPLANTACAO_NUVEM
 | Painel não abre | Acesse manualmente `http://localhost:8501`. |
 | Fonte "sem_credencial" | Falta a chave daquela API em Configurações > Credenciais (é opcional). |
 | Fonte "indisponivel" | Site fora do ar ou limite atingido; o sistema segue com as demais e registra no Histórico. |
+| `ImportError ... O nome do arquivo ou a extensão é muito grande` | Caminho longo demais (limite do Windows). Mova a pasta para `C:\LI\logistics-intelligence`, apague a pasta `.venv` que estiver dentro dela, se existir, e rode o `iniciar_windows.bat` atualizado. |
+| Erro na instalação | Apague a pasta `%LOCALAPPDATA%\LogisticsIntelligence\venv` e rode o `iniciar_windows.bat` de novo. |
 | Quero recomeçar do zero | Feche o painel e apague `data\logistics.db`. |
